@@ -152,14 +152,16 @@ export default function EmployeeRequestsPage() {
     <>
        <style jsx global>{`
           @media print {
-              body > :not(#printable-area) {
+              body > *:not(#printable-area) {
                   display: none;
               }
+              #printable-area, #printable-area * {
+                  visibility: visible;
+              }
               #printable-area {
-                  display: block;
                   position: absolute;
-                  top: 0;
                   left: 0;
+                  top: 0;
                   width: 100%;
               }
           }
@@ -298,8 +300,10 @@ export default function EmployeeRequestsPage() {
             </Card>
         </TabsContent>
       </Tabs>
-      <div id="printable-area" className="hidden">
-        <PrintableRequests ref={printRef} requests={approvedRequests} branch={currentBranch} />
+      <div className="invisible">
+        <div id="printable-area">
+          <PrintableRequests ref={printRef} requests={approvedRequests} branch={currentBranch} />
+        </div>
       </div>
     </>
   );

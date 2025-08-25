@@ -161,14 +161,16 @@ export function RevenueTable() {
     <>
         <style jsx global>{`
             @media print {
-                body > :not(#printable-area) {
+                body > *:not(#printable-area) {
                     display: none;
                 }
+                #printable-area, #printable-area * {
+                    visibility: visible;
+                }
                 #printable-area {
-                    display: block;
                     position: absolute;
-                    top: 0;
                     left: 0;
+                    top: 0;
                     width: 100%;
                 }
             }
@@ -268,8 +270,10 @@ export function RevenueTable() {
             )}
         </CardContent>
         </Card>
-        <div id="printable-area" className="hidden">
-            <PrintableRevenue ref={printRef} records={filteredData} branch={currentBranch} />
+        <div className="invisible">
+            <div id="printable-area">
+                <PrintableRevenue ref={printRef} records={filteredData} branch={currentBranch} />
+            </div>
         </div>
     </>
   );
