@@ -1,30 +1,30 @@
 
-'use client';
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlus, FilePenLine, Trash2, Search, ListOrdered, Shield, History } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState, useContext, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { UserContext, type User, type Role, type Branch } from "@/app/(app)/layout";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { formatDate } from '@/lib/utils'
+import { Trash2, Edit, Shield, Plus, History } from 'lucide-react'
 
-const ALL_PERMISSIONS = [
-  { id: 'dashboard', label: 'لوحة التحكم', description: 'عرض لوحة التحكم الرئيسية' },
-  { id: 'revenue', label: 'الإيرادات', description: 'إدارة الإيرادات' },
-  { id: 'expenses', label: 'المصاريف', description: 'إدارة المصروفات' },
-  { id: 'bonuses', label: 'البونص', description: 'إدارة البونص' },
-  { id: 'requests', label: 'الطلبات', description: 'إدارة طلبات الموظفين والمنتجات' },
-  { id: 'users', label: 'إدارة المستخدمين', description: 'إضافة وتعديل المستخدمين' },
-  { id: 'reports', label: 'التقارير', description: 'عرض وتصدير التقارير' },
-  { id: 'settings', label: 'الإعدادات', description: 'تعديل إعدادات النظام' },
-];
+interface User {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'manager' | 'employee'
+  branch: string
+  position: string
+  status: 'active' | 'inactive'
+  createdAt: string
+  permissions: string[]
+}
 
 interface PermissionLog {
   id: number
@@ -36,420 +36,447 @@ interface PermissionLog {
   timestamp: string
 }
 
-export default function UsersPage() {
-    const { toast } = useToast();
-    const { users, addUser, deleteUser } = useContext(UserContext);
-    const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
-    const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false);
+const ALL_PERMISSIONS = [
+  { id: 'dashboard', label: 'لوحة التحكم', description: 'عرض لوحة التحكم الرئيسية' },
+  { id: 'salaries', label: 'الرواتب', description: 'إدارة مسيرات الرواتب' },
+  { id: 'expenses', label: 'المصروفات', description: 'إدارة المصروفات' },
+  { id: 'revenue', label: 'الإيرادات', description: 'إدارة الإيرادات' },
+  { id: 'products', label: 'المنتجات', description: 'إدارة المنتجات والمخزون' },
+  { id: 'reports', label: 'التقارير', description: 'عرض وتصدير التقارير' },
+  { id: 'users_manage', label: 'إدارة المستخدمين', description: 'إضافة وتعديل المستخدمين' },
+  { id: 'settings', label: 'الإعدادات', description: 'تعديل إعدادات النظام' },
+  { id: 'branches', label: 'الفروع', description: 'إدارة الفروع' },
+  { id: 'employees', label: 'الموظفين', description: 'إدارة بيانات الموظفين' }
+]
 
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [permissionLogs, setPermissionLogs] = useState<PermissionLog[]>([]);
+const BRANCHES = ['فرع لبن', 'فرع طويق', 'الإدارة']
 
-    // Form state for both add and edit
-    const [formData, setFormData] = useState({
-        id: '',
-        name: '',
-        email: '',
-        password: '',
-        role: '' as Role | '',
-        branch: '' as Branch | '',
-    });
+const mockUsers: User[] = [
+    {
+      id: 'USR001',
+      name: 'مدير النظام',
+      email: 'admin@branchflow.com',
+      role: 'admin',
+      branch: 'الإدارة',
+      position: 'مدير النظام',
+      status: 'active',
+      createdAt: '2024-01-01',
+      permissions: ALL_PERMISSIONS.map(p => p.id)
+    },
+    {
+      id: 'USR002',
+      name: 'أحمد علي',
+      email: 'ahmed@branchflow.com',
+      role: 'employee',
+      branch: 'فرع لبن',
+      position: 'موظف مبيعات',
+      status: 'active',
+      createdAt: '2024-01-15',
+      permissions: ['dashboard', 'revenue', 'requests']
+    },
+    {
+      id: 'USR003',
+      name: 'يوسف خالد',
+      email: 'youssef@branchflow.com',
+      role: 'manager',
+      branch: 'فرع طويق',
+      position: 'مشرف فرع',
+      status: 'active',
+      createdAt: '2024-02-01',
+      permissions: ['dashboard', 'revenue', 'expenses', 'requests', 'reports', 'employees']
+    }
+]
 
-    // Form state for permissions
-    const [userPermissions, setUserPermissions] = useState<string[]>([]);
-
-    useEffect(() => {
-        handleSearch(searchTerm);
-    }, [users, searchTerm]);
-
-    const resetForm = () => {
-        setFormData({
-            id: '',
-            name: '',
-            email: '',
-            password: '',
-            role: '',
-            branch: '',
-        });
-        setSelectedUser(null);
-        setUserPermissions([]);
-    };
-
-    const handleAddUser = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.branch) {
-            toast({
-                variant: "destructive",
-                title: "خطأ",
-                description: "الرجاء تعبئة جميع الحقول المطلوبة.",
-            });
-            return;
-        }
-
-        const newUser: User = {
-            id: `USR${String(users.length + 1).padStart(3, '0')}`,
-            name: formData.name,
-            email: formData.email,
-            role: formData.role as Role,
-            branch: formData.branch as Branch,
-        };
-
-        addUser(newUser);
-        toast({
-            title: "تم إضافة المستخدم بنجاح",
-            description: `${formData.name} أصبح الآن جزءاً من الفريق.`,
-            className: "bg-primary text-primary-foreground",
-        });
-
-        resetForm();
-        setIsAddDialogOpen(false);
-    };
-
-    const openEditDialog = (user: User) => {
-        setSelectedUser(user);
-        setFormData({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            password: '', // Password is not shown for editing
-            role: user.role,
-            branch: user.branch,
-        });
-        setIsEditDialogOpen(true);
-    };
-
-    const handleEditUser = (e: React.FormEvent) => {
-        e.preventDefault();
-        // In a real app, this would involve an API call to update the user.
-        // For this mock, we'll just show a toast.
-        toast({
-            title: "تم حفظ التعديلات (محاكاة)",
-            description: `تم تحديث بيانات ${formData.name}.`,
-        });
-        setIsEditDialogOpen(false);
-        resetForm();
-    };
-
-    const handleDeleteUser = (userId: string) => {
-        const userToDelete = users.find(user => user.id === userId);
-        if (userToDelete?.role === 'مدير النظام') {
-            toast({ variant: "destructive", title: "لا يمكن حذف المدير" });
-            return;
-        }
-        if (window.confirm(`هل أنت متأكد من حذف المستخدم ${userToDelete?.name}؟`)) {
-            deleteUser(userId);
-            toast({
-                variant: "destructive",
-                title: "تم حذف المستخدم",
-                description: `تم حذف المستخدم ${userToDelete?.name} من النظام.`,
-            });
-        }
-    };
-
-    const openPermissionsDialog = (user: User) => {
-        setSelectedUser(user);
-        // In a real app, you would fetch user's permissions. For now, we mock it.
-        const mockPermissions = user.role === 'مدير النظام' ? ALL_PERMISSIONS.map(p => p.id) : user.role === 'مشرف فرع' ? ['dashboard', 'revenue', 'expenses', 'requests', 'reports'] : ['dashboard', 'requests'];
-        setUserPermissions(mockPermissions);
-        setIsPermissionsDialogOpen(true);
-    };
-    
-    const handleUpdatePermissions = () => {
-        const newLog: PermissionLog = {
-          id: permissionLogs.length + 1,
-          userId: selectedUser!.id,
-          userName: selectedUser!.name,
-          action: 'تحديث صلاحيات',
-          permissions: userPermissions,
-          changedBy: 'المدير الحالي', // In a real app, get current user name
-          timestamp: new Date().toLocaleString('ar-SA')
-        }
-        setPermissionLogs([newLog, ...permissionLogs]);
-
-        toast({
-            title: "تم تحديث الصلاحيات",
-            description: `تم حفظ الصلاحيات الجديدة لـ ${selectedUser?.name}.`,
-        });
-        setIsPermissionsDialogOpen(false);
-        resetForm();
-    };
+const mockLogs: PermissionLog[] = [
+    {
+      id: 1,
+      userId: 'USR003',
+      userName: 'يوسف خالد',
+      action: 'منح صلاحيات',
+      permissions: ['reports', 'employees'],
+      changedBy: 'مدير النظام',
+      timestamp: '2024-07-01 10:30:00'
+    },
+]
 
 
-    const handleSearch = (term: string) => {
-        setSearchTerm(term);
-        if (!term) {
-            setFilteredUsers(users);
-        } else {
-            const results = users.filter(user => 
-                user.name.toLowerCase().includes(term.toLowerCase()) ||
-                user.email.toLowerCase().includes(term.toLowerCase())
-            );
-            setFilteredUsers(results);
-        }
-    };
+export default function AdminUsers() {
+  const [users, setUsers] = useState<User[]>(mockUsers)
+  const [permissionLogs, setPermissionLogs] = useState<PermissionLog[]>(mockLogs)
+  const [loading, setLoading] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false)
+  const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const router = useRouter()
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'employee' as 'admin' | 'manager' | 'employee',
+    branch: '',
+    position: '',
+    permissions: [] as string[]
+  })
+
+
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newUser: User = {
+        id: `USR${Date.now()}`,
+        ...formData,
+        status: 'active',
+        createdAt: new Date().toISOString()
+      }
+      setUsers(prev => [newUser, ...prev]);
+      setIsAddDialogOpen(false)
+      resetForm()
+  }
+
+  const handleEditUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+      setUsers(users.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, ...formData, password: '' } // password not updated this way
+          : u
+      ))
+      setIsEditDialogOpen(false)
+      resetForm()
+  }
+
+  const handleDeleteUser = (userId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return
+      setUsers(users.filter(u => u.id !== userId))
+  }
+
+  const handleToggleStatus = (userId: string) => {
+    setUsers(users.map(u => 
+        u.id === userId 
+          ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
+          : u
+      ))
+  }
+
+  const handleUpdatePermissions = () => {
+    if (!selectedUser) return;
+    setUsers(users.map(u => 
+        u.id === selectedUser?.id 
+          ? { ...u, permissions: formData.permissions }
+          : u
+    ));
+
+    const newLog: PermissionLog = {
+      id: permissionLogs.length + 1,
+      userId: selectedUser.id,
+      userName: selectedUser.name,
+      action: 'تحديث صلاحيات',
+      permissions: formData.permissions,
+      changedBy: 'مدير النظام',
+      timestamp: new Date().toLocaleString('ar-SA')
+    }
+    setPermissionLogs([newLog, ...permissionLogs]);
+
+    setIsPermissionsDialogOpen(false);
+    resetForm();
+  }
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'employee',
+      branch: '',
+      position: '',
+      permissions: []
+    })
+    setSelectedUser(null)
+  }
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user)
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role: user.role,
+      branch: user.branch,
+      position: user.position,
+      permissions: user.permissions
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openPermissionsDialog = (user: User) => {
+    setSelectedUser(user)
+    setFormData({
+        ...formData,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        branch: user.branch,
+        position: user.position,
+        permissions: user.permissions
+    })
+    setIsPermissionsDialogOpen(true)
+  }
+
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.branch.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-red-500/20 text-red-500'
+      case 'manager': return 'bg-blue-500/20 text-blue-500'
+      case 'employee': return 'bg-green-500/20 text-green-500'
+      default: return 'bg-gray-500/20 text-gray-500'
+    }
+  }
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'مدير النظام'
+      case 'manager': return 'مشرف'
+      case 'employee': return 'موظف'
+      default: return role
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-white text-xl">جاري التحميل...</div>
+      </div>
+    )
+  }
 
   return (
-    <>
-    <div className="space-y-6">
-        <Card>
-            <CardHeader>
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                        <CardTitle>إدارة المستخدمين والصلاحيات</CardTitle>
-                        <CardDescription>عرض وإضافة وتعديل المستخدمين وصلاحياتهم في النظام.</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Dialog open={isLogsDialogOpen} onOpenChange={setIsLogsDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline"><History className="mr-2 h-4 w-4"/>سجل التغييرات</Button>
-                            </DialogTrigger>
-                             <DialogContent className="max-w-3xl">
-                                <DialogHeader>
-                                    <DialogTitle>سجل تغييرات الصلاحيات</DialogTitle>
-                                    <DialogDescription>عرض التغييرات التي تمت على صلاحيات المستخدمين.</DialogDescription>
-                                </DialogHeader>
-                                <div className="max-h-96 overflow-y-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>التاريخ</TableHead>
-                                            <TableHead>المستخدم</TableHead>
-                                            <TableHead>الإجراء</TableHead>
-                                            <TableHead>بواسطة</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {permissionLogs.map(log => (
-                                            <TableRow key={log.id}>
-                                                <TableCell>{log.timestamp}</TableCell>
-                                                <TableCell>{log.userName}</TableCell>
-                                                <TableCell><Badge variant="secondary">{log.action}</Badge></TableCell>
-                                                <TableCell>{log.changedBy}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                 {permissionLogs.length === 0 && <p className="text-center text-muted-foreground py-8">لا يوجد سجلات لعرضها.</p>}
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button>
-                                    <CirclePlus className="mr-2 h-4 w-4" />
-                                    إضافة مستخدم
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                                <form onSubmit={handleAddUser}>
-                                    <DialogHeader>
-                                        <DialogTitle>إضافة مستخدم جديد</DialogTitle>
-                                        <DialogDescription>أدخل بيانات المستخدم الجديد وحدد صلاحياته.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="user-name">الاسم الكامل</Label>
-                                            <Input id="user-name" placeholder="مثال: خالد محمد" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="user-email">البريد الإلكتروني</Label>
-                                            <Input id="user-email" type="email" placeholder="user@example.com" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="user-password">كلمة المرور</Label>
-                                            <Input id="user-password" type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="user-role">الصلاحية</Label>
-                                            <Select required value={formData.role} onValueChange={(value) => setFormData({...formData, role: value as Role})}>
-                                                <SelectTrigger><SelectValue placeholder="اختر الصلاحية" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="مدير النظام">مدير النظام</SelectItem>
-                                                    <SelectItem value="مشرف فرع">مشرف فرع</SelectItem>
-                                                    <SelectItem value="موظف">موظف</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="user-branch">الفرع</Label>
-                                            <Select required value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value as Branch})}>
-                                                <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="كافة الفروع">كافة الفروع (للمدراء)</SelectItem>
-                                                    <SelectItem value="فرع لبن">فرع لبن</SelectItem>
-                                                    <SelectItem value="فرع طويق">فرع طويق</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button type="submit" className="w-full">حفظ المستخدم</Button>
-                                    </DialogFooter>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="relative w-full mb-4">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="ابحث بالاسم أو البريد..." className="pr-10 w-full" value={searchTerm} onChange={e => handleSearch(e.target.value)} />
-                </div>
-                <TooltipProvider>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>الاسم</TableHead>
-                                    <TableHead>البريد الإلكتروني</TableHead>
-                                    <TableHead>الصلاحية</TableHead>
-                                    <TableHead>الفرع</TableHead>
-                                    <TableHead className="text-left">إجراءات</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredUsers.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
-                                    <TableCell className="whitespace-nowrap text-muted-foreground">{user.email}</TableCell>
-                                    <TableCell><Badge variant={user.role === 'مدير النظام' ? 'default' : 'secondary'}>{user.role}</Badge></TableCell>
-                                    <TableCell>{user.branch}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-1 justify-end">
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" onClick={() => openPermissionsDialog(user)}><Shield className="h-4 w-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>تعديل الصلاحيات</p></TooltipContent>
-                                            </Tooltip>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}><FilePenLine className="h-4 w-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>تعديل بيانات المستخدم</p></TooltipContent>
-                                            </Tooltip>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'مدير النظام'}><Trash2 className="h-4 w-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>حذف المستخدم</p></TooltipContent>
-                                            </Tooltip>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </TooltipProvider>
-                {filteredUsers.length === 0 && (
-                    <div className="py-10 text-center text-muted-foreground">
-                        لم يتم العثور على مستخدمين مطابقين.
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    </div>
+    <div className="flex-1 p-8 space-y-8 text-white">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">إدارة المستخدمين</h1>
+          <p className="text-gray-400">إدارة حسابات المستخدمين والصلاحيات</p>
+        </div>
 
-     {/* Edit User Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="sm:max-w-md">
-                <form onSubmit={handleEditUser}>
-                    <DialogHeader>
-                        <DialogTitle>تعديل بيانات المستخدم</DialogTitle>
-                        <DialogDescription>تحديث بيانات المستخدم الأساسية.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-name">الاسم الكامل</Label>
-                            <Input id="edit-name" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-email">البريد الإلكتروني</Label>
-                            <Input id="edit-email" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-role">الصلاحية</Label>
-                            <Select required value={formData.role} onValueChange={(value) => setFormData({...formData, role: value as Role})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="مدير النظام">مدير النظام</SelectItem>
-                                    <SelectItem value="مشرف فرع">مشرف فرع</SelectItem>
-                                    <SelectItem value="موظف">موظف</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-branch">الفرع</Label>
-                            <Select required value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value as Branch})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="كافة الفروع">كافة الفروع (للمدراء)</SelectItem>
-                                    <SelectItem value="فرع لبن">فرع لبن</SelectItem>
-                                    <SelectItem value="فرع طويق">فرع طويق</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" className="w-full">حفظ التغييرات</Button>
-                    </DialogFooter>
-                </form>
+        <div className="mb-6 flex gap-4">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="البحث عن مستخدم..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة مستخدم جديد
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-800 text-white max-w-md border-gray-700">
+              <DialogHeader>
+                <DialogTitle className="text-xl">إضافة مستخدم جديد</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddUser} className="space-y-4">
+                <div>
+                  <Label htmlFor="name">الاسم</Label>
+                  <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                </div>
+                <div>
+                  <Label htmlFor="email">البريد الإلكتروني</Label>
+                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                </div>
+                <div>
+                  <Label htmlFor="password">كلمة المرور</Label>
+                  <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                </div>
+                <div>
+                  <Label htmlFor="role">الدور</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      <SelectItem value="admin">مدير النظام</SelectItem>
+                      <SelectItem value="manager">مشرف</SelectItem>
+                      <SelectItem value="employee">موظف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="branch">الفرع</Label>
+                  <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="position">المنصب</Label>
+                  <Input id="position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                </div>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">إضافة المستخدم</Button>
+              </form>
             </DialogContent>
+          </Dialog>
+
+          <Button onClick={() => setIsLogsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700"><History className="w-4 h-4 ml-2" />سجل التغييرات</Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <Card className="bg-gray-800 border-gray-700 p-4">
+            <p className="text-gray-400 text-sm mb-2 text-center">إجمالي المستخدمين</p>
+            <p className="text-3xl font-bold text-white text-center">{users.length}</p>
+          </Card>
+          <Card className="bg-gray-800 border-gray-700 p-4">
+            <p className="text-gray-400 text-sm mb-2 text-center">المستخدمون النشطون</p>
+            <p className="text-3xl font-bold text-green-500 text-center">{users.filter(u => u.status === 'active').length}</p>
+          </Card>
+          <Card className="bg-gray-800 border-gray-700 p-4">
+            <p className="text-gray-400 text-sm mb-2 text-center">المستخدمون غير النشطين</p>
+            <p className="text-3xl font-bold text-red-500 text-center">{users.filter(u => u.status === 'inactive').length}</p>
+          </Card>
+        </div>
+
+        <Card className="bg-gray-800 border-gray-700 p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">قائمة المستخدمين</h3>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-700 hover:bg-gray-800">
+                  <TableHead className="text-gray-400">الاسم</TableHead>
+                  <TableHead className="text-gray-400">البريد الإلكتروني</TableHead>
+                  <TableHead className="text-gray-400">الدور</TableHead>
+                  <TableHead className="text-gray-400">الفرع</TableHead>
+                  <TableHead className="text-gray-400">الحالة</TableHead>
+                  <TableHead className="text-gray-400">الصلاحيات</TableHead>
+                  <TableHead className="text-gray-400">الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map(user => (
+                  <TableRow key={user.id} className="border-gray-700 hover:bg-gray-700">
+                    <TableCell className="text-white">{user.name}</TableCell>
+                    <TableCell className="text-gray-300">{user.email}</TableCell>
+                    <TableCell><Badge className={getRoleBadgeColor(user.role)}>{getRoleLabel(user.role)}</Badge></TableCell>
+                    <TableCell className="text-gray-300">{user.branch}</TableCell>
+                    <TableCell>
+                      <Button onClick={() => handleToggleStatus(user.id)} className={`h-auto px-2 py-1 text-xs ${user.status === 'active' ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'}`}>
+                        {user.status === 'active' ? 'نشط' : 'غير نشط'}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button onClick={() => openPermissionsDialog(user)} variant={'ghost'} className="text-blue-500 hover:text-blue-400 flex items-center gap-1 p-1 h-auto">
+                        <Shield className="w-4 h-4" />
+                        {user.permissions.length} صلاحية
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button onClick={() => openEditDialog(user)} variant={'ghost'} size={'icon'} className="text-blue-500 hover:text-blue-400 h-8 w-8" title="تعديل"><Edit className="w-4 h-4" /></Button>
+                        {user.role !== 'admin' && (<Button onClick={() => handleDeleteUser(user.id)} variant={'ghost'} size={'icon'} className="text-red-500 hover:text-red-400 h-8 w-8" title="حذف"><Trash2 className="w-4 h-4" /></Button>)}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="bg-gray-800 text-white max-w-md border-gray-700">
+            <DialogHeader><DialogTitle className="text-xl">تعديل المستخدم</DialogTitle></DialogHeader>
+            <form onSubmit={handleEditUser} className="space-y-4">
+               <div><Label>الاسم</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
+               <div><Label>البريد الإلكتروني</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
+               <div><Label>كلمة المرور (اتركها فارغة لعدم التغيير)</Label><Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" /></div>
+               <div>
+                  <Label>الدور</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      <SelectItem value="admin">مدير النظام</SelectItem>
+                      <SelectItem value="manager">مشرف</SelectItem>
+                      <SelectItem value="employee">موظف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>الفرع</Label>
+                  <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                      {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+               <div><Label>المنصب</Label><Input value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
+               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">حفظ التغييرات</Button>
+            </form>
+          </DialogContent>
         </Dialog>
-    
+
         {/* Permissions Dialog */}
         <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>إدارة صلاحيات: {selectedUser?.name}</DialogTitle>
-                    <DialogDescription>
-                        حدد الصلاحيات الممنوحة للمستخدم. التغييرات ستؤثر على وصول المستخدم لأجزاء النظام.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 max-h-96 overflow-y-auto p-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {ALL_PERMISSIONS.map(permission => (
-                            <div key={permission.id} className="flex items-start gap-3 rounded-lg border p-3">
-                                <input
-                                    type="checkbox"
-                                    id={`perm-${permission.id}`}
-                                    checked={userPermissions.includes(permission.id)}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setUserPermissions(prev => [...prev, permission.id]);
-                                        } else {
-                                            setUserPermissions(prev => prev.filter(p => p !== permission.id));
-                                        }
-                                    }}
-                                    className="mt-1 h-4 w-4"
-                                />
-                                <div className="flex-1">
-                                    <Label htmlFor={`perm-${permission.id}`} className="text-sm font-medium cursor-pointer">
-                                        {permission.label}
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">{permission.description}</p>
-                                </div>
-                            </div>
-                        ))}
+            <DialogContent className="bg-gray-800 text-white max-w-2xl border-gray-700">
+                <DialogHeader><DialogTitle className="text-xl">إدارة صلاحيات: {selectedUser?.name}</DialogTitle></DialogHeader>
+                <div className="space-y-4 max-h-96 overflow-y-auto p-1">
+                <div className="grid grid-cols-2 gap-4">
+                    {ALL_PERMISSIONS.map(permission => (
+                    <div key={permission.id} className="flex items-start gap-3 rounded-lg border border-gray-700 p-3 bg-gray-900/50">
+                        <input type="checkbox" id={`perm-${permission.id}`} checked={formData.permissions.includes(permission.id)} onChange={(e) => {
+                            const newPermissions = e.target.checked
+                                ? [...formData.permissions, permission.id]
+                                : formData.permissions.filter(p => p !== permission.id);
+                            setFormData(prev => ({...prev, permissions: newPermissions}));
+                        }} className="mt-1 h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500" />
+                        <div className="flex-1"><Label htmlFor={`perm-${permission.id}`} className="text-white cursor-pointer">{permission.label}</Label><p className="text-xs text-gray-400">{permission.description}</p></div>
                     </div>
+                    ))}
                 </div>
-                 <DialogFooter>
-                    <div className="flex gap-2 pt-4 w-full">
-                         <Button onClick={handleUpdatePermissions} className="flex-1">حفظ الصلاحيات</Button>
-                        <Button onClick={() => setUserPermissions([])} variant="secondary">إلغاء الكل</Button>
-                        <Button onClick={() => setUserPermissions(ALL_PERMISSIONS.map(p => p.id))} variant="outline">تحديد الكل</Button>
+                </div>
+                <DialogFooter className="!justify-between pt-4">
+                    <div>
+                        <Button onClick={() => setFormData(prev => ({...prev, permissions: []}))} variant="destructive">إلغاء الكل</Button>
+                        <Button onClick={() => setFormData(prev => ({...prev, permissions: ALL_PERMISSIONS.map(p => p.id)}))} variant="outline" className='mr-2'>تحديد الكل</Button>
                     </div>
-                 </DialogFooter>
+                    <Button onClick={handleUpdatePermissions} className="bg-blue-600 hover:bg-blue-700">حفظ الصلاحيات</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
 
-    </>
-  );
-}
 
+        {/* Permission Logs Dialog */}
+        <Dialog open={isLogsDialogOpen} onOpenChange={setIsLogsDialogOpen}>
+          <DialogContent className="bg-gray-800 text-white max-w-3xl border-gray-700">
+            <DialogHeader><DialogTitle className="text-xl">سجل تغييرات الصلاحيات</DialogTitle></DialogHeader>
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader><TableRow className="border-gray-700 hover:bg-gray-800"><TableHead className="text-gray-400">التاريخ</TableHead><TableHead className="text-gray-400">المستخدم</TableHead><TableHead className="text-gray-400">الإجراء</TableHead><TableHead className="text-gray-400">بواسطة</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {permissionLogs.map(log => (
+                    <TableRow key={log.id} className="border-gray-700">
+                      <TableCell className="text-sm">{log.timestamp}</TableCell>
+                      <TableCell className="text-sm">{log.userName}</TableCell>
+                      <TableCell><Badge className={log.action.includes('منح') ? 'bg-green-500/20 text-green-500' : log.action.includes('إلغاء') ? 'bg-red-500/20 text-red-500' : 'bg-blue-500/20 text-blue-500'}>{log.action}</Badge></TableCell>
+                      <TableCell className="text-sm">{log.changedBy}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  )
+}

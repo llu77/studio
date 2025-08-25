@@ -25,6 +25,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  WalletCards,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -38,6 +39,7 @@ const menuItems = [
   { href: "/requests/employees", label: "طلبات الموظفين", icon: FileText },
   { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket },
   { href: "/users", label: "إدارة المستخدمين", icon: Users },
+  { href: "/salaries", label: "الرواتب", icon: WalletCards },
   { href: "/reports", label: "التقارير", icon: BarChart3 },
   { href: "/settings", label: "الإعدادات", icon: Settings },
 ];
