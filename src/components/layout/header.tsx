@@ -1,10 +1,41 @@
+
+"use client";
+
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { usePathname, useRouter } from "next/navigation";
 
-export function Header({ pageTitle }: { pageTitle: string }) {
+
+function getPageTitle(pathname: string) {
+    if (pathname === '/') return 'لوحة التحكم';
+    if (pathname.startsWith('/revenue')) return 'الإيرادات';
+    if (pathname.startsWith('/expenses')) return 'المصاريف';
+    if (pathname.startsWith('/bonuses')) return 'البونص';
+    if (pathname.startsWith('/requests/employees')) return 'طلبات الموظفين';
+    if (pathname.startsWith('/requests/products')) return 'طلبات المنتجات';
+    if (pathname.startsWith('/users')) return 'إدارة المستخدمين';
+    if (pathname.startsWith('/reports')) return 'التقارير';
+    if (pathname.startsWith('/settings')) return 'الإعدادات';
+    return 'BranchFlow';
+}
+
+
+export function Header() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const pageTitle = getPageTitle(pathname);
+
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden" />
@@ -15,21 +46,21 @@ export function Header({ pageTitle }: { pageTitle: string }) {
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar>
-              <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User" />
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarImage src={user?.photoURL || "https://i.pravatar.cc/150"} alt={user?.displayName || "User"} />
+              <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>حسابي</DropdownMenuLabel>
+          <DropdownMenuLabel>{user?.displayName || user?.email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>
             <User className="ms-2 h-4 w-4" />
             <span>الملف الشخصي</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="ms-2 h-4 w-4" />
             <span>تسجيل الخروج</span>
           </DropdownMenuItem>
