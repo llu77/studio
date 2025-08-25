@@ -19,7 +19,7 @@ function getPageTitle(pathname: string) {
     if (pathname.startsWith('/expenses')) return 'المصاريف';
     if (pathname.startsWith('/bonuses')) return 'البونص';
     if (pathname.startsWith('/requests/employees')) return 'طلبات الموظفين';
-    if (pathname.startsWith('/requests/products')) return 'طلبات المنتجات';
+    if (pathname.startsWith('/requests/products')) return 'نقطة البيع';
     if (pathname.startsWith('/users')) return 'إدارة المستخدمين';
     if (pathname.startsWith('/reports')) return 'التقارير';
     if (pathname.startsWith('/settings')) return 'الإعدادات';
@@ -48,11 +48,13 @@ export function Header() {
       </div>
 
        <div className="flex items-center gap-4">
-        <div className="relative w-48">
-            <Building className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="w-48 hidden md:block">
             <Select value={currentBranch} onValueChange={setCurrentBranch}>
-                <SelectTrigger className="pr-10">
-                    <SelectValue placeholder="اختر الفرع..." />
+                <SelectTrigger className="w-full">
+                    <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="اختر الفرع..." />
+                    </div>
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="laban">فرع لبن</SelectItem>
@@ -75,12 +77,12 @@ export function Header() {
             <DropdownMenuLabel>{user?.displayName || user?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <User className="ms-2 h-4 w-4" />
+              <User className="ml-2 h-4 w-4" />
               <span>الملف الشخصي</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="ms-2 h-4 w-4" />
+              <LogOut className="ml-2 h-4 w-4" />
               <span>تسجيل الخروج</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

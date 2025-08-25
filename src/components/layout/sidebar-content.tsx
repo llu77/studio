@@ -36,7 +36,7 @@ const menuItems = [
   { href: "/expenses", label: "المصاريف", icon: TrendingDown },
   { href: "/bonuses", label: "البونص", icon: Award },
   { href: "/requests/employees", label: "طلبات الموظفين", icon: FileText },
-  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket },
+  { href: "/requests/products", label: "نقطة البيع", icon: ShoppingBasket },
   { href: "/users", label: "إدارة المستخدمين", icon: Users },
   { href: "/reports", label: "التقارير", icon: BarChart3 },
   { href: "/settings", label: "الإعدادات", icon: Settings },
@@ -71,7 +71,7 @@ export function AppSidebarContent() {
                   tooltip={item.label}
                 >
                   <Link href={item.href}>
-                      <item.icon className="ms-2" />
+                      <item.icon className="ml-2" />
                       <span>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -83,7 +83,7 @@ export function AppSidebarContent() {
             <SidebarSeparator />
             <div className="mt-2">
                  <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
-                    <LogOut className="ms-2 size-4" />
+                    <LogOut className="ml-2 size-4" />
                     <span className="group-data-[collapsible=icon]:hidden">تسجيل الخروج</span>
                  </Button>
             </div>

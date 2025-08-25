@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useContext, useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
@@ -9,6 +9,7 @@ import { BranchContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from '@/components/ui/separator';
 
 // --- Data ---
 const branchData = {
@@ -109,7 +110,7 @@ export default function BonusesPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                 <div className="flex items-center gap-2 p-2 rounded-md bg-muted w-full justify-center md:w-auto">
+                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted w-full justify-center md:w-auto">
                     <Award className="h-5 w-5 text-primary" />
                     <span className="text-sm text-muted-foreground">إجمالي بونص الأسبوع:</span>
                     <span className="font-bold text-primary text-lg">{selectedWeekTotalBonus.toLocaleString('ar-SA')} ريال</span>
@@ -132,7 +133,7 @@ export default function BonusesPage() {
                           <TableHead>اسم الموظف</TableHead>
                           <TableHead>إجمالي إيراداته للأسبوع</TableHead>
                           <TableHead>مستوى البونص</TableHead>
-                          <TableHead className="text-primary">مبلغ البونص المستحق</TableHead>
+                          <TableHead className="text-primary text-right">مبلغ البونص المستحق</TableHead>
                       </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -142,16 +143,16 @@ export default function BonusesPage() {
                               <TableCell>{emp.currentRevenue.toLocaleString('ar-SA')} ريال</TableCell>
                               <TableCell className={`flex items-center gap-2 font-semibold ${emp.color}`}>
                                   {emp.icon}
-                                  {emp.currentBonus > 0 ? `${getBonusTier(emp.currentRevenue).level}` : 'لا يوجد'}
+                                  {emp.currentBonus > 0 ? `المستوى ${getBonusTier(emp.currentRevenue).level}` : 'لا يوجد'}
                               </TableCell>
-                              <TableCell className="font-bold text-primary text-lg">
+                              <TableCell className="font-bold text-primary text-lg text-right">
                                 {emp.currentBonus.toLocaleString('ar-SA')} ريال
                               </TableCell>
                           </TableRow>
                       ))}
                        <TableRow className="bg-muted/50 font-bold">
                           <TableCell colSpan={3}>الإجمالي للأسبوع المحدد</TableCell>
-                          <TableCell className="text-primary text-lg">{selectedWeekTotalBonus.toLocaleString('ar-SA')} ريال</TableCell>
+                          <TableCell className="text-primary text-lg text-right">{selectedWeekTotalBonus.toLocaleString('ar-SA')} ريال</TableCell>
                       </TableRow>
                   </TableBody>
               </Table>
@@ -171,7 +172,7 @@ export default function BonusesPage() {
                       <TableRow>
                           <TableHead>اسم الموظف</TableHead>
                           <TableHead>إجمالي إيراداته للشهر</TableHead>
-                          <TableHead className="text-primary">إجمالي البونص المستحق للشهر</TableHead>
+                          <TableHead className="text-primary text-right">إجمالي البونص المستحق للشهر</TableHead>
                       </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -179,20 +180,20 @@ export default function BonusesPage() {
                           <TableRow key={emp.id} className="hover:bg-primary/5">
                               <TableCell className="font-medium">{emp.name}</TableCell>
                               <TableCell>{emp.totalRevenue.toLocaleString('ar-SA')} ريال</TableCell>
-                              <TableCell className="font-bold text-primary text-xl">
+                              <TableCell className="font-bold text-primary text-xl text-right">
                                 {emp.totalBonus.toLocaleString('ar-SA')} ريال
                               </TableCell>
                           </TableRow>
                       ))}
                   </TableBody>
               </Table>
-               <div className="flex justify-end mt-6">
-                  <Button size="lg" onClick={handleApproveBonus}>
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      اعتماد وصرف بونص الشهر
-                  </Button>
-              </div>
           </CardContent>
+          <CardFooter className="justify-end pt-6">
+              <Button size="lg" onClick={handleApproveBonus}>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  اعتماد وصرف بونص الشهر
+              </Button>
+          </CardFooter>
       </Card>
     </div>
   );

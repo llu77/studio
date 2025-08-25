@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
@@ -49,15 +49,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-full max-w-md mx-4 shadow-2xl">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <Card className="w-full max-w-md shadow-2xl border-border/60">
+        <CardHeader className="text-center space-y-4 pt-8">
+          <div className="flex justify-center">
             <Logo />
           </div>
           <CardTitle className="text-3xl font-bold">مرحباً بعودتك</CardTitle>
           <CardDescription>
-            سجل الدخول إلى حسابك في BranchFlow
+            سجل الدخول إلى حسابك في BranchFlow لإدارة فروعك
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,6 +97,9 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
+         <CardFooter>
+            <p className="text-xs text-muted-foreground text-center w-full">© 2024 BranchFlow. جميع الحقوق محفوظة.</p>
+        </CardFooter>
       </Card>
     </div>
   );

@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlus, Printer, Trash2, MinusCircle, Search, ShoppingCart } from "lucide-react";
+import { CirclePlus, Printer, Trash2, Search, ShoppingCart } from "lucide-react";
 import React, { useState, useMemo, useContext, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
 import { useAuth } from "@/hooks/use-auth";
 import Image from "next/image";
+import { Separator } from "@/components/ui/separator";
 
 // --- Data ---
 const initialProducts = [
@@ -34,10 +35,12 @@ const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: numb
     const { user } = useAuth();
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
     const today = new Date().toLocaleDateString('ar-SA');
+    const vat = total * 0.15;
+    const grandTotal = total + vat;
 
     return (
-        <div ref={ref} className="p-4 bg-card text-card-foreground rounded-lg border">
-            <div className="text-center mb-4">
+        <div ref={ref} className="p-6 bg-card text-card-foreground rounded-lg border">
+            <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-primary">فاتورة ضريبية مبسطة</h2>
                 <p className="text-sm text-muted-foreground">{branchName}</p>
             </div>
@@ -45,6 +48,7 @@ const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: numb
                 <span><span className="font-semibold">الموظف:</span> {user?.displayName || "غير محدد"}</span>
                 <span><span className="font-semibold">التاريخ:</span> {today}</span>
             </div>
+            <Separator className="my-4"/>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -63,18 +67,20 @@ const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: numb
                     ))}
                 </TableBody>
             </Table>
-            <div className="mt-4 space-y-2 border-t pt-2">
+            <Separator className="my-4"/>
+            <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">الإجمالي الفرعي</span>
                     <span className="font-semibold font-mono">{total.toFixed(2)} ريال</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">ضريبة القيمة المضافة (15%)</span>
-                    <span className="font-semibold font-mono">{(total * 0.15).toFixed(2)} ريال</span>
+                    <span className="font-semibold font-mono">{vat.toFixed(2)} ريال</span>
                 </div>
-                <div className="border-t pt-2 mt-2 flex justify-between items-center text-lg font-bold text-primary">
+                 <Separator className="my-2"/>
+                <div className="flex justify-between items-center text-lg font-bold text-primary">
                     <span>الإجمالي للدفع</span>
-                    <span className="font-mono">{(total * 1.15).toFixed(2)} ريال</span>
+                    <span className="font-mono">{grandTotal.toFixed(2)} ريال</span>
                 </div>
             </div>
         </div>
@@ -87,8 +93,7 @@ export default function ProductRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const invoiceRef = useRef<HTMLDivElement>(null);
-
+    
     const filteredProducts = useMemo(() => {
         return initialProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [searchTerm]);
@@ -134,25 +139,14 @@ export default function ProductRequestsPage() {
 
     return (
         <>
-            <style jsx global>{`
-                @media print {
-                    body > :not(#printable-invoice) {
-                        display: none;
-                    }
-                    #printable-invoice {
-                        display: block;
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                    }
-                }
-            `}</style>
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="printable-content hidden print:block">
+                <Invoice cart={cart} total={total} />
+            </div>
+            <div className="non-printable grid lg:grid-cols-2 gap-6">
                 {/* Left Side: Invoice and Actions */}
                 <div className="flex flex-col gap-6">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
+                        <CardHeader className="flex flex-row items-start justify-between">
                             <div>
                                 <CardTitle>الفاتورة الحالية</CardTitle>
                                 <CardDescription>إجمالي {cart.length} منتجات</CardDescription>
@@ -175,7 +169,7 @@ export default function ProductRequestsPage() {
                                     <p>أضف منتجات من القائمة لبدء فاتورة جديدة.</p>
                                 </div>
                             ) : (
-                                <Invoice ref={invoiceRef} cart={cart} total={total} />
+                                <Invoice cart={cart} total={total} />
                             )}
                         </CardContent>
                     </Card>
@@ -187,16 +181,16 @@ export default function ProductRequestsPage() {
                         <CardHeader>
                             <CardTitle>قائمة المنتجات</CardTitle>
                             <div className="relative mt-2">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input 
                                     placeholder="ابحث عن منتج..." 
-                                    className="pr-10" 
+                                    className="pl-10" 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+                        <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
                             {filteredProducts.map(product => (
                                 <div key={product.id} className="flex items-center gap-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
                                     <Image data-ai-hint={`${product.category}`} src={`https://picsum.photos/seed/${product.id}/100/100`} alt={product.name} width={64} height={64} className="rounded-md object-cover" />
@@ -215,10 +209,6 @@ export default function ProductRequestsPage() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
-             {/* Hidden div for printing */}
-            <div id="printable-invoice" className="hidden">
-                 <Invoice cart={cart} total={total} ref={null}/>
             </div>
         </>
     );

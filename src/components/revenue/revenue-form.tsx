@@ -84,7 +84,6 @@ export function RevenueForm() {
     );
 
     const onSubmit: SubmitHandler<RevenueFormValues> = (data) => {
-        // Here you would typically send the data to your server/API
         console.log(data);
         toast({
             title: "نجاح",
@@ -95,7 +94,7 @@ export function RevenueForm() {
     };
 
     return (
-        <Card>
+        <Card className="max-w-4xl mx-auto">
             <CardHeader>
                 <CardTitle>إدخال إيرادات اليوم</CardTitle>
                 <CardDescription>أدخل تفاصيل الإيرادات اليومية وقم بتوزيعها على الموظفين.</CardDescription>
@@ -153,10 +152,10 @@ export function RevenueForm() {
                         <Separator />
                         
                         <div>
-                            <h3 className="text-lg font-medium">توزيع الإيرادات على الموظفين</h3>
-                            <div className="mt-4 space-y-4">
+                            <h3 className="text-lg font-medium mb-4">توزيع الإيرادات على الموظفين</h3>
+                            <div className="space-y-4">
                                 {fields.map((field, index) => (
-                                    <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row">
+                                    <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row md:items-end">
                                         <FormField
                                             control={form.control}
                                             name={`distribution.${index}.employeeName`}
@@ -186,11 +185,9 @@ export function RevenueForm() {
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
-                                        <div className="flex items-end">
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                                                <MinusCircle size={20} />
-                                            </Button>
-                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                                            <MinusCircle size={20} />
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
@@ -209,18 +206,18 @@ export function RevenueForm() {
                                     </span>
                                 </div>
                             )}
-
+                            
                             {fields.length < 5 && (
                                 <Button type="button" variant="outline" onClick={() => append({ employeeName: "", amount: 0 })} className="mt-4">
-                                    <PlusCircle className="ms-2" />
+                                    <PlusCircle className="mr-2" />
                                     إضافة موظف آخر
                                 </Button>
                             )}
                         </div>
                         
-                        <div className="flex justify-end">
+                        <div className="flex justify-end pt-4">
                             <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
-                                <Save className="ms-2" />
+                                <Save className="mr-2" />
                                 حفظ الإيرادات
                             </Button>
                         </div>
