@@ -50,7 +50,7 @@ export function Header() {
        <div className="flex items-center gap-2 md:gap-4">
         <div className="w-36 md:w-48">
             <Select value={currentBranch} onValueChange={setCurrentBranch}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full bg-secondary border-secondary-border">
                     <div className="flex items-center gap-2">
                         <Building className="h-4 w-4 text-muted-foreground hidden md:block" />
                         <SelectValue placeholder="اختر الفرع..." />
@@ -65,7 +65,7 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="icon" className="rounded-full">
+            <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar>
                 <AvatarImage src={user?.photoURL || "https://i.pravatar.cc/150"} alt={user?.displayName || "User"} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -80,8 +80,7 @@ export function Header() {
               <User className="ml-2 h-4 w-4" />
               <span>الملف الشخصي</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="ml-2 h-4 w-4" />
               <span>تسجيل الخروج</span>
             </DropdownMenuItem>

@@ -44,7 +44,7 @@ const menuItems = [
 
 export function AppSidebarContent() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -57,9 +57,9 @@ export function AppSidebarContent() {
     <Sidebar side="right" variant="sidebar" collapsible="icon">
       <div className="flex h-full flex-col">
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo className="group-data-[collapsible=icon]:hidden" />
-          </Link>
+            <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+                <Logo className="group-data-[collapsible=icon]:hidden" />
+            </Link>
         </SidebarHeader>
         <UiSidebarContent>
           <SidebarMenu>
@@ -81,11 +81,9 @@ export function AppSidebarContent() {
         </UiSidebarContent>
         <SidebarFooter className="p-4">
             <SidebarSeparator />
-            <div className="mt-2">
-                 <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
-                    <LogOut className="ml-2 size-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">تسجيل الخروج</span>
-                 </Button>
+             <div className="mt-2 text-center text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                <p>&copy; 2024 BranchFlow</p>
+                <p>كل الحقوق محفوظة</p>
             </div>
         </SidebarFooter>
       </div>
