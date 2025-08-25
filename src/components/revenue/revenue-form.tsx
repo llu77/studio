@@ -65,17 +65,17 @@ export function RevenueForm() {
     const [totalRevenue, cash, card, distribution] = watchFields;
 
     const isRevenueMismatched = React.useMemo(() => 
-        (totalRevenue > 0) && Math.abs((cash + card) - totalRevenue) > 0.01,
+        (Number(totalRevenue) > 0) && Math.abs((Number(cash) + Number(card)) - Number(totalRevenue)) > 0.01,
         [totalRevenue, cash, card]
     );
 
     const distributedTotal = React.useMemo(() => 
-        distribution.reduce((acc, dist) => acc + (dist.amount || 0), 0),
+        distribution.reduce((acc, dist) => acc + (Number(dist.amount) || 0), 0),
         [distribution]
     );
     
     const isDistributionUnbalanced = React.useMemo(() =>
-        totalRevenue > 0 && Math.abs(distributedTotal - totalRevenue) > 0.01,
+        Number(totalRevenue) > 0 && Math.abs(distributedTotal - Number(totalRevenue)) > 0.01,
         [totalRevenue, distributedTotal]
     );
 
@@ -184,8 +184,8 @@ export function RevenueForm() {
                                 <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
                                     <AlertTriangle size={16} />
                                     <span>
-                                        المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({totalRevenue.toFixed(2)} ريال).
-                                        الفرق: {(distributedTotal - totalRevenue).toFixed(2)} ريال
+                                        المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({(typeof totalRevenue === 'number' ? totalRevenue : 0).toFixed(2)} ريال).
+                                        الفرق: {(distributedTotal - (typeof totalRevenue === 'number' ? totalRevenue : 0)).toFixed(2)} ريال
                                     </span>
                                 </div>
                             )}
