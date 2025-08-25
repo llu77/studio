@@ -1,12 +1,12 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState, useEffect } from "react";
+import { useFormStatus } from "react-dom";
 import { getFinancialSummary, type FormState } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Wand2 } from "lucide-react";
 
@@ -26,7 +26,7 @@ function SubmitButton() {
   }
 
 export function AiSummary() {
-  const [state, formAction] = useFormState(getFinancialSummary, initialState);
+  const [state, formAction] = useActionState(getFinancialSummary, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
