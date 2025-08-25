@@ -141,6 +141,7 @@ export function RevenueTable() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filteredData, setFilteredData] = React.useState(mockData);
   const { currentBranch } = React.useContext(BranchContext);
+  const printRef = React.useRef(null);
 
   React.useEffect(() => {
     const results = mockData.filter(record =>
@@ -157,7 +158,7 @@ export function RevenueTable() {
 
   return (
     <>
-      <div className="printable-content hidden print:block">
+      <div className="printable-content hidden" ref={printRef}>
         <PrintableRevenue records={filteredData} branch={currentBranch} />
       </div>
       <div className="non-printable">
@@ -172,7 +173,7 @@ export function RevenueTable() {
                         <div className="relative flex-grow">
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="ابحث بالتاريخ، الموظف، أو رقم القيد..."
+                                placeholder="ابحث بالتاريخ، الموظف..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pr-10"
@@ -180,74 +181,77 @@ export function RevenueTable() {
                         </div>
                         <Button variant="outline" size="icon" onClick={handlePrint}>
                             <Printer className="h-4 w-4" />
+                            <span className="sr-only">طباعة</span>
                         </Button>
                     </div>
                 </div>
             </CardHeader>
             <CardContent>
                 <TooltipProvider>
+                  <div className="overflow-x-auto">
                     <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>رقم القيد</TableHead>
-                        <TableHead>التاريخ</TableHead>
-                        <TableHead>الإجمالي</TableHead>
-                        <TableHead>التوزيع</TableHead>
-                        <TableHead>الحالة</TableHead>
-                        <TableHead className="text-left">إجراءات</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredData.map((record) => (
-                        <TableRow key={record.id}>
-                            <TableCell className="font-medium">{record.id}</TableCell>
-                            <TableCell>{record.date}</TableCell>
-                            <TableCell>{record.totalRevenue.toFixed(2)} ريال</TableCell>
-                            <TableCell>
-                                <ul className="list-disc pr-4">
-                                    {record.distribution.map((d, i) => (
-                                        <li key={i}>{d.employeeName}: {d.amount.toFixed(2)} ريال</li>
-                                    ))}
-                                </ul>
-                            </TableCell>
-                            <TableCell>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Badge variant={statusVariantMap[record.status]}>{statusTextMap[record.status]}</Badge>
-                                    </TooltipTrigger>
-                                    {record.status === 'Discrepancy' && record.discrepancyReason && (
-                                        <TooltipContent>
-                                            <p>{record.discrepancyReason}</p>
-                                        </TooltipContent>
-                                    )}
-                                </Tooltip>
-                            </TableCell>
-                            <TableCell className="text-left">
-                                <div className="flex gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <FilePenLine className="h-4 w-4" />
-                                                <span className="sr-only">تعديل</span>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>تعديل</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">حذف</span>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>حذف</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
+                      <TableHeader>
+                          <TableRow>
+                          <TableHead>رقم القيد</TableHead>
+                          <TableHead>التاريخ</TableHead>
+                          <TableHead>الإجمالي</TableHead>
+                          <TableHead>التوزيع</TableHead>
+                          <TableHead>الحالة</TableHead>
+                          <TableHead className="text-left">إجراءات</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {filteredData.map((record) => (
+                          <TableRow key={record.id}>
+                              <TableCell className="font-medium whitespace-nowrap">{record.id}</TableCell>
+                              <TableCell className="whitespace-nowrap">{record.date}</TableCell>
+                              <TableCell className="whitespace-nowrap">{record.totalRevenue.toFixed(2)} ريال</TableCell>
+                              <TableCell>
+                                  <ul className="list-disc pr-4">
+                                      {record.distribution.map((d, i) => (
+                                          <li key={i} className="whitespace-nowrap">{d.employeeName}: {d.amount.toFixed(2)} ريال</li>
+                                      ))}
+                                  </ul>
+                              </TableCell>
+                              <TableCell>
+                                  <Tooltip>
+                                      <TooltipTrigger asChild>
+                                          <Badge variant={statusVariantMap[record.status]}>{statusTextMap[record.status]}</Badge>
+                                      </TooltipTrigger>
+                                      {record.status === 'Discrepancy' && record.discrepancyReason && (
+                                          <TooltipContent>
+                                              <p>{record.discrepancyReason}</p>
+                                          </TooltipContent>
+                                      )}
+                                  </Tooltip>
+                              </TableCell>
+                              <TableCell className="text-left">
+                                  <div className="flex gap-1 justify-end">
+                                      <Tooltip>
+                                          <TooltipTrigger asChild>
+                                              <Button variant="ghost" size="icon">
+                                                  <FilePenLine className="h-4 w-4" />
+                                                  <span className="sr-only">تعديل</span>
+                                              </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>تعديل</p></TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                          <TooltipTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                  <Trash2 className="h-4 w-4" />
+                                                  <span className="sr-only">حذف</span>
+                                              </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>حذف</p></TooltipContent>
+                                      </Tooltip>
+                                  </div>
+                              </TableCell>
+                          </TableRow>
+                          ))}
+                      </TableBody>
                     </Table>
+                  </div>
                 </TooltipProvider>
                 {filteredData.length === 0 && (
                     <div className="py-10 text-center text-muted-foreground">

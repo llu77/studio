@@ -47,12 +47,12 @@ export function Header() {
         <h1 className="text-lg font-semibold md:text-2xl">{pageTitle}</h1>
       </div>
 
-       <div className="flex items-center gap-4">
-        <div className="w-48 hidden md:block">
+       <div className="flex items-center gap-2 md:gap-4">
+        <div className="w-36 md:w-48">
             <Select value={currentBranch} onValueChange={setCurrentBranch}>
                 <SelectTrigger className="w-full">
                     <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <Building className="h-4 w-4 text-muted-foreground hidden md:block" />
                         <SelectValue placeholder="اختر الفرع..." />
                     </div>
                 </SelectTrigger>

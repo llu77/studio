@@ -31,8 +31,8 @@ export default function DashboardPage() {
   const data = branchData[currentBranch as keyof typeof branchData] || branchData.laban;
 
   return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="إجمالي الإيرادات"
           value={data.revenue}
@@ -58,14 +58,14 @@ export default function DashboardPage() {
           description={data.bonusDesc}
         />
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
             <RevenueChart />
         </div>
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-1">
             <AiSummary />
         </div>
       </div>
-    </>
+    </div>
   );
 }

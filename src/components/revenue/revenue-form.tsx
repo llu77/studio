@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, MinusCircle, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -94,15 +94,15 @@ export function RevenueForm() {
     };
 
     return (
-        <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle>إدخال إيرادات اليوم</CardTitle>
-                <CardDescription>أدخل تفاصيل الإيرادات اليومية وقم بتوزيعها على الموظفين.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>بيانات الإيراد الأساسية</CardTitle>
+                        <CardDescription>أدخل تفاصيل الإيرادات اليومية وطريقة الدفع.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <FormField control={form.control} name="date" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>التاريخ</FormLabel>
@@ -132,7 +132,6 @@ export function RevenueForm() {
                                 </FormItem>
                             )} />
                         </div>
-
                         {isRevenueMismatched && (
                             <FormField control={form.control} name="discrepancyReason" render={({ field }) => (
                                 <FormItem className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
@@ -148,82 +147,81 @@ export function RevenueForm() {
                                 </FormItem>
                             )} />
                         )}
+                    </CardContent>
+                </Card>
 
-                        <Separator />
-                        
-                        <div>
-                            <h3 className="text-lg font-medium mb-4">توزيع الإيرادات على الموظفين</h3>
-                            <div className="space-y-4">
-                                {fields.map((field, index) => (
-                                    <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row md:items-end">
-                                        <FormField
-                                            control={form.control}
-                                            name={`distribution.${index}.employeeName`}
-                                            render={({ field }) => (
-                                                <FormItem className="flex-1">
-                                                <FormLabel>اسم الموظف</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="اختر الموظف" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {users.filter(u => u.role !== 'مدير النظام').map(user => (
-                                                                <SelectItem key={user.id} value={user.name}>{user.name} ({user.branch})</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField control={form.control} name={`distribution.${index}.amount`} render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel>المبلغ المستلم</FormLabel>
-                                                <FormControl><Input type="number" placeholder="1500" {...field} /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                                            <MinusCircle size={20} />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {form.formState.errors.distribution?.root && (
-                                <p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.distribution.root.message}</p>
-                            )}
-
-
-                             {isDistributionUnbalanced && (
-                                <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
-                                    <AlertTriangle size={16} />
-                                    <span>
-                                        المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({(typeof totalRevenue === 'number' ? Number(totalRevenue) : 0).toFixed(2)} ريال).
-                                        الفرق: {(distributedTotal - (typeof totalRevenue === 'number' ? Number(totalRevenue) : 0)).toFixed(2)} ريال
-                                    </span>
-                                </div>
-                            )}
-                            
-                            {fields.length < 5 && (
-                                <Button type="button" variant="outline" onClick={() => append({ employeeName: "", amount: 0 })} className="mt-4">
-                                    <PlusCircle className="mr-2" />
-                                    إضافة موظف آخر
+                <Card>
+                    <CardHeader>
+                        <CardTitle>توزيع الإيرادات على الموظفين</CardTitle>
+                        <CardDescription>قم بتوزيع إجمالي الإيراد على الموظفين العاملين في الوردية.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                         {fields.map((field, index) => (
+                            <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row md:items-end">
+                                <FormField
+                                    control={form.control}
+                                    name={`distribution.${index}.employeeName`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                        <FormLabel>اسم الموظف</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="اختر الموظف" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                                        <SelectItem key={user.id} value={user.name}>{user.name} ({user.branch})</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField control={form.control} name={`distribution.${index}.amount`} render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel>المبلغ المستلم</FormLabel>
+                                        <FormControl><Input type="number" placeholder="1500" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:bg-destructive/10 hover:text-destructive md:mb-1">
+                                    <MinusCircle size={20} />
                                 </Button>
-                            )}
-                        </div>
+                            </div>
+                        ))}
                         
-                        <div className="flex justify-end pt-4">
-                            <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
-                                <Save className="mr-2" />
-                                حفظ الإيرادات
+                        {fields.length < 5 && (
+                            <Button type="button" variant="outline" onClick={() => append({ employeeName: "", amount: 0 })}>
+                                <PlusCircle className="mr-2" />
+                                إضافة موظف آخر
                             </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                        )}
+                        
+                        {form.formState.errors.distribution?.root && (
+                            <p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.distribution.root.message}</p>
+                        )}
+
+                        {isDistributionUnbalanced && (
+                            <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
+                                <AlertTriangle size={16} />
+                                <span>
+                                    المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({(typeof totalRevenue === 'number' ? Number(totalRevenue) : 0).toFixed(2)} ريال).
+                                    الفرق: {(distributedTotal - (typeof totalRevenue === 'number' ? Number(totalRevenue) : 0)).toFixed(2)} ريال
+                                </span>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                        <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+                            <Save className="mr-2" />
+                            حفظ الإيرادات
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </form>
+        </Form>
     );
 }

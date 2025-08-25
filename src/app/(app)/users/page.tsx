@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlus, FilePenLine, Trash2, Search } from "lucide-react";
+import { CirclePlus, FilePenLine, Trash2, Search, ListOrdered } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import React, { useState, useContext } from "react";
@@ -106,13 +106,13 @@ export default function UsersPage() {
         <CardHeader>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <CardTitle>قائمة المستخدمين</CardTitle>
-                    <CardDescription>عرض وتعديل المستخدمين الحاليين في النظام.</CardDescription>
+                    <CardTitle>إدارة المستخدمين</CardTitle>
+                    <CardDescription>عرض وإضافة وتعديل المستخدمين في النظام.</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="relative w-full md:w-auto">
+                     <div className="relative w-full flex-1 md:w-auto md:flex-grow-0">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="ابحث بالاسم أو البريد الإلكتروني..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)} />
+                        <Input placeholder="ابحث بالاسم أو البريد..." className="pr-10 w-full" value={searchTerm} onChange={e => handleSearch(e.target.value)} />
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
@@ -121,29 +121,29 @@ export default function UsersPage() {
                                 إضافة مستخدم
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-md">
                              <form onSubmit={handleSaveUser}>
                                 <DialogHeader>
                                     <DialogTitle>إضافة مستخدم جديد</DialogTitle>
                                     <DialogDescription>أدخل بيانات المستخدم الجديد وحدد صلاحياته.</DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
-                                     <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="user-name" className="text-right">الاسم الكامل</Label>
-                                        <Input id="user-name" placeholder="مثال: خالد محمد" required value={name} onChange={e => setName(e.target.value)} className="col-span-3" />
+                                     <div className="space-y-2">
+                                        <Label htmlFor="user-name">الاسم الكامل</Label>
+                                        <Input id="user-name" placeholder="مثال: خالد محمد" required value={name} onChange={e => setName(e.target.value)} />
                                     </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="user-email" className="text-right">البريد الإلكتروني</Label>
-                                        <Input id="user-email" type="email" placeholder="user@example.com" required value={email} onChange={e => setEmail(e.target.value)} className="col-span-3" />
+                                    <div className="space-y-2">
+                                        <Label htmlFor="user-email">البريد الإلكتروني</Label>
+                                        <Input id="user-email" type="email" placeholder="user@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
                                     </div>
-                                     <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="user-password" className="text-right">كلمة المرور</Label>
-                                        <Input id="user-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className="col-span-3" />
+                                     <div className="space-y-2">
+                                        <Label htmlFor="user-password">كلمة المرور</Label>
+                                        <Input id="user-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
                                     </div>
-                                     <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="user-role" className="text-right">الصلاحية</Label>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="user-role">الصلاحية</Label>
                                          <Select required value={role} onValueChange={(value) => setRole(value as Role)}>
-                                            <SelectTrigger className="col-span-3">
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="اختر الصلاحية" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -153,10 +153,10 @@ export default function UsersPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="user-branch" className="text-right">الفرع</Label>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="user-branch">الفرع</Label>
                                         <Select required value={branch} onValueChange={(value) => setBranch(value as Branch)}>
-                                            <SelectTrigger className="col-span-3">
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="اختر الفرع" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -168,7 +168,7 @@ export default function UsersPage() {
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button type="submit">حفظ المستخدم</Button>
+                                    <Button type="submit" className="w-full">حفظ المستخدم</Button>
                                 </DialogFooter>
                             </form>
                         </DialogContent>
@@ -178,44 +178,51 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
             <TooltipProvider>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>الاسم</TableHead>
-                            <TableHead>البريد الإلكتروني</TableHead>
-                            <TableHead>الصلاحية</TableHead>
-                            <TableHead>الفرع</TableHead>
-                            <TableHead>إجراءات</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.name}</TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell><Badge variant={user.role === 'مدير النظام' ? 'default' : 'secondary'}>{user.role}</Badge></TableCell>
-                            <TableCell>{user.branch}</TableCell>
-                            <TableCell>
-                                <div className="flex gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}><FilePenLine className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>تعديل</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteUser(user.id)}><Trash2 className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>حذف</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>الاسم</TableHead>
+                                <TableHead>البريد الإلكتروني</TableHead>
+                                <TableHead>الصلاحية</TableHead>
+                                <TableHead>الفرع</TableHead>
+                                <TableHead className="text-left">إجراءات</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredUsers.map((user) => (
+                            <TableRow key={user.id}>
+                                <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
+                                <TableCell className="whitespace-nowrap">{user.email}</TableCell>
+                                <TableCell><Badge variant={user.role === 'مدير النظام' ? 'default' : 'secondary'}>{user.role}</Badge></TableCell>
+                                <TableCell>{user.branch}</TableCell>
+                                <TableCell>
+                                    <div className="flex gap-1 justify-end">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}><FilePenLine className="h-4 w-4" /></Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>تعديل</p></TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteUser(user.id)}><Trash2 className="h-4 w-4" /></Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>حذف</p></TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </TooltipProvider>
+             {filteredUsers.length === 0 && (
+                <div className="py-10 text-center text-muted-foreground">
+                    لم يتم العثور على مستخدمين مطابقين.
+                </div>
+            )}
         </CardContent>
     </Card>
   );
