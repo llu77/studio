@@ -1,37 +1,61 @@
-import { Header } from "@/components/layout/header";
+
+'use client';
+
+import React, { useContext } from 'react';
 import { StatCard } from "@/components/dashboard/stat-card";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { AiSummary } from "@/components/dashboard/ai-summary";
-import { DollarSign, Landmark, Wallet } from "lucide-react";
+import { DollarSign, Landmark, Wallet, Users } from "lucide-react";
+import { BranchContext } from './layout';
+
+const branchData = {
+  laban: {
+    revenue: "45,231.89 ريال",
+    expenses: "12,150.40 ريال",
+    profit: "33,081.49 ريال",
+    bonus: "1,250 ريال",
+    bonusDesc: "تم توزيعها على موظفين",
+  },
+  tuwaiq: {
+    revenue: "62,780.50 ريال",
+    expenses: "18,920.75 ريال",
+    profit: "43,859.75 ريال",
+    bonus: "1,800 ريال",
+    bonusDesc: "تم توزيعها على 3 موظفين",
+  }
+};
+
 
 export default function DashboardPage() {
+  const { currentBranch } = useContext(BranchContext);
+  const data = branchData[currentBranch as keyof typeof branchData] || branchData.laban;
+
   return (
     <>
-      <Header pageTitle="لوحة التحكم" />
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <StatCard
           title="إجمالي الإيرادات"
-          value="45,231.89 ريال"
+          value={data.revenue}
           icon={DollarSign}
           description="+20.1% من الشهر الماضي"
         />
         <StatCard
           title="إجمالي المصاريف"
-          value="12,150.40 ريال"
+          value={data.expenses}
           icon={Wallet}
           description="+18.1% من الشهر الماضي"
         />
         <StatCard
           title="الأرباح الصافية"
-          value="33,081.49 ريال"
+          value={data.profit}
           icon={Landmark}
           description="+21% من الشهر الماضي"
         />
          <StatCard
           title="بونص هذا الأسبوع"
-          value="1,250 ريال"
-          icon={DollarSign}
-          description="تم توزيعها على 5 موظفين"
+          value={data.bonus}
+          icon={Users}
+          description={data.bonusDesc}
         />
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
