@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CirclePlus, Printer, Trash2, MinusCircle, Search, ShoppingCart } from "lucide-react";
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,7 +87,7 @@ export default function ProductRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const invoiceRef = React.useRef<HTMLDivElement>(null);
+    const invoiceRef = useRef<HTMLDivElement>(null);
 
     const filteredProducts = useMemo(() => {
         return initialProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -120,15 +120,7 @@ export default function ProductRequestsPage() {
     const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
     const handlePrint = () => {
-        const printContents = invoiceRef.current?.innerHTML;
-        if (printContents) {
-            const originalContents = document.body.innerHTML;
-            document.body.innerHTML = printContents;
-            window.print();
-            document.body.innerHTML = originalContents;
-            // Restore event listeners if necessary, though for a simple print it's often not needed.
-            // A full solution might involve an iframe.
-        }
+        window.print();
     };
 
     const handleClearCart = () => {
@@ -144,16 +136,14 @@ export default function ProductRequestsPage() {
         <>
             <style jsx global>{`
                 @media print {
-                    body, html {
-                        visibility: hidden;
-                    }
-                    #printable-invoice, #printable-invoice * {
-                        visibility: visible;
+                    body > :not(#printable-invoice) {
+                        display: none;
                     }
                     #printable-invoice {
+                        display: block;
                         position: absolute;
-                        left: 0;
                         top: 0;
+                        left: 0;
                         width: 100%;
                     }
                 }
@@ -227,12 +217,9 @@ export default function ProductRequestsPage() {
                 </div>
             </div>
              {/* Hidden div for printing */}
-            <div className="hidden">
-                <div id="printable-invoice">
-                    <Invoice cart={cart} total={total} ref={null} />
-                </div>
+            <div id="printable-invoice" className="hidden">
+                 <Invoice cart={cart} total={total} ref={null}/>
             </div>
         </>
     );
 }
-
