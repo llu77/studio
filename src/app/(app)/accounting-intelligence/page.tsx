@@ -12,7 +12,7 @@ import {
   calculateEfficiencyRatios,
   detectStatisticalAnomalies,
   analyzeBehavioralPatterns,
-  forecastRevenue,
+  predictFinancialMetric,
   performComplianceChecks,
   generateIntelligentRecommendations,
   type BenfordAnalysis,
@@ -26,7 +26,6 @@ import {
   type ComplianceCheck,
   type IntelligentRecommendation
 } from '@/lib/accounting-intelligence'
-import Sidebar from '@/components/Sidebar'
 
 interface AnalysisResult {
   benford: BenfordAnalysis | null
@@ -85,8 +84,8 @@ export default function AccountingIntelligencePage() {
       
       // التنبؤات
       const predictions = new Map<string, FinancialPrediction>()
-      predictions.set('revenue', forecastRevenue(historicalRevenue))
-      predictions.set('expenses', forecastRevenue(historicalRevenue.map(r => r * 0.78)))
+      predictions.set('revenue', predictFinancialMetric(historicalRevenue))
+      predictions.set('expenses', predictFinancialMetric(historicalRevenue.map(r => r * 0.78)))
       
       // فحوصات الامتثال
       const compliance = performComplianceChecks({
@@ -209,10 +208,7 @@ export default function AccountingIntelligencePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
-      <Sidebar />
-      
-      <div className="flex-1 p-8 text-white">
+      <div className="flex-1 p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">نظام الذكاء المحاسبي</h1>
           <p className="text-gray-400">كشف الاحتيال والتحليل المتقدم باستخدام الذكاء الاصطناعي</p>
@@ -233,8 +229,8 @@ export default function AccountingIntelligencePage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground hover:bg-accent'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
               <span className="mr-2">{tab.icon}</span>
@@ -248,30 +244,30 @@ export default function AccountingIntelligencePage() {
           <div className="space-y-6">
             {/* قانون بنفورد */}
             {analysisResult.benford && (
-              <Card className="bg-card border-border p-6">
+              <Card className="bg-gray-800 border-gray-700 p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">
                   🔢 تحليل قانون بنفورد
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">Chi-Square</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">Chi-Square</p>
                     <p className="text-2xl font-bold text-white">{analysisResult.benford.chiSquare}</p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">مستوى الخطر</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">مستوى الخطر</p>
                     <p className={`text-xl font-bold ${getRiskColor(analysisResult.benford.riskLevel)}`}>
                       {analysisResult.benford.riskLevel === 'high' ? 'عالي' :
                        analysisResult.benford.riskLevel === 'medium' ? 'متوسط' : 'منخفض'}
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">الحالة</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">الحالة</p>
                     <p className={`text-xl font-bold ${analysisResult.benford.isAnomaly ? 'text-red-500' : 'text-green-500'}`}>
                       {analysisResult.benford.isAnomaly ? '⚠️ شذوذ محتمل' : '✅ طبيعي'}
                     </p>
                   </div>
                 </div>
-                <div className="p-4 bg-muted rounded-lg">
+                <div className="p-4 bg-gray-700 rounded-lg">
                   <p className="text-sm text-gray-300">{analysisResult.benford.message}</p>
                 </div>
                 
@@ -281,22 +277,22 @@ export default function AccountingIntelligencePage() {
                   <div className="space-y-2">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit, index) => (
                       <div key={digit} className="flex items-center gap-4">
-                        <div className="w-8 text-muted-foreground">{digit}</div>
+                        <div className="w-8 text-gray-400">{digit}</div>
                         <div className="flex-1 flex gap-2">
-                          <div className="flex-1 bg-muted rounded h-6 relative">
+                          <div className="flex-1 bg-gray-700 rounded h-6 relative">
                             <div 
                               className="absolute inset-y-0 left-0 bg-blue-600 rounded"
                               style={{ width: `${(analysisResult.benford?.distribution[index] || 0) * 100}%` }}
                             />
                           </div>
-                          <div className="flex-1 bg-muted rounded h-6 relative">
+                          <div className="flex-1 bg-gray-700 rounded h-6 relative">
                             <div 
                               className="absolute inset-y-0 left-0 bg-green-600 rounded"
                               style={{ width: `${(analysisResult.benford?.expectedDistribution[index] || 0) * 100}%` }}
                             />
                           </div>
                         </div>
-                        <div className="w-20 text-right text-sm text-muted-foreground">
+                        <div className="w-20 text-right text-sm text-gray-400">
                           {((analysisResult.benford?.deviations[index] || 0)).toFixed(1)}%
                         </div>
                       </div>
@@ -305,11 +301,11 @@ export default function AccountingIntelligencePage() {
                   <div className="flex justify-center gap-8 mt-4 text-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-blue-600 rounded"></div>
-                      <span className="text-muted-foreground">الفعلي</span>
+                      <span className="text-gray-400">الفعلي</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-green-600 rounded"></div>
-                      <span className="text-muted-foreground">المتوقع</span>
+                      <span className="text-gray-400">المتوقع</span>
                     </div>
                   </div>
                 </div>
@@ -317,7 +313,7 @@ export default function AccountingIntelligencePage() {
             )}
 
             {/* المعاملات المكررة */}
-            <Card className="bg-card border-border p-6">
+            <Card className="bg-gray-800 border-gray-700 p-6">
               <h3 className="text-xl font-semibold text-white mb-4">
                 🔄 المعاملات المكررة المشبوهة
               </h3>
@@ -325,17 +321,17 @@ export default function AccountingIntelligencePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-right py-3 px-4 text-muted-foreground">المعرف</th>
-                        <th className="text-right py-3 px-4 text-muted-foreground">المبلغ</th>
-                        <th className="text-right py-3 px-4 text-muted-foreground">التاريخ</th>
-                        <th className="text-center py-3 px-4 text-muted-foreground">التكرار</th>
-                        <th className="text-center py-3 px-4 text-muted-foreground">الخطر</th>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-right py-3 px-4 text-gray-400">المعرف</th>
+                        <th className="text-right py-3 px-4 text-gray-400">المبلغ</th>
+                        <th className="text-right py-3 px-4 text-gray-400">التاريخ</th>
+                        <th className="text-center py-3 px-4 text-gray-400">التكرار</th>
+                        <th className="text-center py-3 px-4 text-gray-400">الخطر</th>
                       </tr>
                     </thead>
                     <tbody>
                       {analysisResult.duplicates.slice(0, 10).map((dup, index) => (
-                        <tr key={index} className="border-b border-border hover:bg-muted/50">
+                        <tr key={index} className="border-b border-gray-700 hover:bg-gray-700/50">
                           <td className="py-3 px-4 text-gray-300">{dup.id}</td>
                           <td className="py-3 px-4 text-yellow-500">{formatCurrency(dup.amount)}</td>
                           <td className="py-3 px-4 text-gray-300">
@@ -362,31 +358,31 @@ export default function AccountingIntelligencePage() {
                   </table>
                 </div>
               ) : (
-                <p className="text-muted-foreground">لا توجد معاملات مكررة مشبوهة</p>
+                <p className="text-gray-400">لا توجد معاملات مكررة مشبوهة</p>
               )}
             </Card>
 
             {/* الأرقام المستديرة */}
             {analysisResult.roundNumbers && (
-              <Card className="bg-card border-border p-6">
+              <Card className="bg-gray-800 border-gray-700 p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">
                   🎯 تحليل الأرقام المستديرة
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">المعاملات المشبوهة</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">المعاملات المشبوهة</p>
                     <p className="text-2xl font-bold text-orange-500">
                       {analysisResult.roundNumbers.totalSuspicious}
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">النسبة المئوية</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">النسبة المئوية</p>
                     <p className="text-2xl font-bold text-yellow-500">
                       {analysisResult.roundNumbers.percentageSuspicious.toFixed(1)}%
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">الحالة</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">الحالة</p>
                     <p className={`text-xl font-bold ${
                       analysisResult.roundNumbers.percentageSuspicious > 10 ? 'text-red-500' : 'text-green-500'
                     }`}>
@@ -412,38 +408,38 @@ export default function AccountingIntelligencePage() {
           <div className="space-y-6">
             {/* نسب السيولة */}
             {analysisResult.liquidity && (
-              <Card className="bg-card border-border p-6">
+              <Card className="bg-gray-800 border-gray-700 p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">💧 نسب السيولة</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-4 bg-gray-700 rounded-lg">
                     <h4 className="text-lg font-semibold text-white mb-2">النسبة الجارية</h4>
                     <div className={`text-3xl font-bold mb-2 ${getRiskColor(analysisResult.liquidity.currentRatio.status)}`}>
                       {analysisResult.liquidity.currentRatio.value}
                     </div>
-                    <p className="text-sm text-muted-foreground">{analysisResult.liquidity.currentRatio.message}</p>
-                    <div className="mt-3 p-2 bg-accent rounded text-xs text-gray-300">
+                    <p className="text-sm text-gray-400">{analysisResult.liquidity.currentRatio.message}</p>
+                    <div className="mt-3 p-2 bg-gray-600 rounded text-xs text-gray-300">
                       المعيار: 1.5 - 3.0
                     </div>
                   </div>
                   
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-4 bg-gray-700 rounded-lg">
                     <h4 className="text-lg font-semibold text-white mb-2">النسبة السريعة</h4>
                     <div className={`text-3xl font-bold mb-2 ${getRiskColor(analysisResult.liquidity.quickRatio.status)}`}>
                       {analysisResult.liquidity.quickRatio.value}
                     </div>
-                    <p className="text-sm text-muted-foreground">{analysisResult.liquidity.quickRatio.message}</p>
-                    <div className="mt-3 p-2 bg-accent rounded text-xs text-gray-300">
+                    <p className="text-sm text-gray-400">{analysisResult.liquidity.quickRatio.message}</p>
+                    <div className="mt-3 p-2 bg-gray-600 rounded text-xs text-gray-300">
                       المعيار: {'>'} 1.0
                     </div>
                   </div>
                   
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-4 bg-gray-700 rounded-lg">
                     <h4 className="text-lg font-semibold text-white mb-2">نسبة النقدية</h4>
                     <div className={`text-3xl font-bold mb-2 ${getRiskColor(analysisResult.liquidity.cashRatio.status)}`}>
                       {analysisResult.liquidity.cashRatio.value}
                     </div>
-                    <p className="text-sm text-muted-foreground">{analysisResult.liquidity.cashRatio.message}</p>
-                    <div className="mt-3 p-2 bg-accent rounded text-xs text-gray-300">
+                    <p className="text-sm text-gray-400">{analysisResult.liquidity.cashRatio.message}</p>
+                    <div className="mt-3 p-2 bg-gray-600 rounded text-xs text-gray-300">
                       المعيار: {'>'} 0.2
                     </div>
                   </div>
@@ -453,11 +449,11 @@ export default function AccountingIntelligencePage() {
 
             {/* نسب الكفاءة */}
             {analysisResult.efficiency && (
-              <Card className="bg-card border-border p-6">
+              <Card className="bg-gray-800 border-gray-700 p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">⚙️ نسب الكفاءة</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">دوران المخزون</p>
+                  <div className="p-3 bg-gray-700 rounded-lg">
+                    <p className="text-sm text-gray-400 mb-1">دوران المخزون</p>
                     <p className="text-xl font-bold text-blue-500">
                       {analysisResult.efficiency.inventoryTurnover}x
                     </p>
@@ -466,8 +462,8 @@ export default function AccountingIntelligencePage() {
                     </p>
                   </div>
                   
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">دوران المدينين</p>
+                  <div className="p-3 bg-gray-700 rounded-lg">
+                    <p className="text-sm text-gray-400 mb-1">دوران المدينين</p>
                     <p className="text-xl font-bold text-green-500">
                       {analysisResult.efficiency.receivablesTurnover}x
                     </p>
@@ -476,15 +472,15 @@ export default function AccountingIntelligencePage() {
                     </p>
                   </div>
                   
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">دوران الأصول</p>
+                  <div className="p-3 bg-gray-700 rounded-lg">
+                    <p className="text-sm text-gray-400 mb-1">دوران الأصول</p>
                     <p className="text-xl font-bold text-purple-500">
                       {analysisResult.efficiency.assetTurnover}x
                     </p>
                   </div>
                   
-                  <div className="p-3 bg-muted rounded-lg col-span-2 md:col-span-3">
-                    <p className="text-sm text-muted-foreground mb-1">دورة التشغيل</p>
+                  <div className="p-3 bg-gray-700 rounded-lg col-span-2 md:col-span-3">
+                    <p className="text-sm text-gray-400 mb-1">دورة التشغيل</p>
                     <p className="text-2xl font-bold text-yellow-500">
                       {analysisResult.efficiency.operatingCycle} يوم
                     </p>
@@ -502,7 +498,7 @@ export default function AccountingIntelligencePage() {
         {activeTab === 'anomalies' && analysisResult && (
           <div className="space-y-6">
             {/* الشذوذ الإحصائي */}
-            <Card className="bg-card border-border p-6">
+            <Card className="bg-gray-800 border-gray-700 p-6">
               <h3 className="text-xl font-semibold text-white mb-4">📈 الشذوذ الإحصائي</h3>
               {analysisResult.anomalies.length > 0 ? (
                 <div className="space-y-3">
@@ -527,25 +523,25 @@ export default function AccountingIntelligencePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">لا توجد قيم شاذة إحصائياً</p>
+                <p className="text-gray-400">لا توجد قيم شاذة إحصائياً</p>
               )}
             </Card>
 
             {/* الأنماط السلوكية */}
-            <Card className="bg-card border-border p-6">
+            <Card className="bg-gray-800 border-gray-700 p-6">
               <h3 className="text-xl font-semibold text-white mb-4">👤 الأنماط السلوكية المشبوهة</h3>
               {analysisResult.behavioral.size > 0 ? (
                 <div className="space-y-4">
                   {Array.from(analysisResult.behavioral.values())
                     .filter(pattern => pattern.unusualActivity)
                     .map(pattern => (
-                      <div key={pattern.userId} className="p-4 bg-muted rounded-lg">
+                      <div key={pattern.userId} className="p-4 bg-gray-700 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <h4 className="text-lg font-semibold text-white">
                             المستخدم: {pattern.userId}
                           </h4>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">درجة الخطر:</span>
+                            <span className="text-sm text-gray-400">درجة الخطر:</span>
                             <span className={`text-2xl font-bold ${
                               pattern.riskScore > 70 ? 'text-red-500' :
                               pattern.riskScore > 40 ? 'text-yellow-500' :
@@ -558,7 +554,7 @@ export default function AccountingIntelligencePage() {
                         
                         {pattern.patterns.length > 0 && (
                           <div className="mb-3">
-                            <p className="text-sm text-muted-foreground mb-2">الأنماط المكتشفة:</p>
+                            <p className="text-sm text-gray-400 mb-2">الأنماط المكتشفة:</p>
                             <ul className="list-disc list-inside text-sm text-gray-300">
                               {pattern.patterns.map((p, i) => (
                                 <li key={i}>{p}</li>
@@ -581,7 +577,7 @@ export default function AccountingIntelligencePage() {
                     ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">لا توجد أنماط سلوكية مشبوهة</p>
+                <p className="text-gray-400">لا توجد أنماط سلوكية مشبوهة</p>
               )}
             </Card>
           </div>
@@ -591,31 +587,48 @@ export default function AccountingIntelligencePage() {
         {activeTab === 'predictions' && analysisResult && (
           <div className="space-y-6">
             {Array.from(analysisResult.predictions.entries()).map(([metric, prediction]) => (
-              <Card key={metric} className="bg-card border-border p-6">
+              <Card key={metric} className="bg-gray-800 border-gray-700 p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">
                   🔮 تنبؤ {metric === 'revenue' ? 'الإيرادات' : 'المصروفات'}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">القيمة المتوقعة</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">القيمة المتوقعة</p>
                     <p className="text-2xl font-bold text-blue-500">
                       {formatCurrency(prediction.nextPeriod)}
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">مستوى الثقة</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">مستوى الثقة</p>
                     <p className="text-2xl font-bold text-green-500">
-                      {(prediction.confidence * 100).toFixed(0)}%
+                      {prediction.confidence}%
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">الاتجاه</p>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">الاتجاه</p>
                     <p className="text-2xl font-bold">
                       {prediction.trend === 'increasing' ? '📈 تصاعدي' :
                        prediction.trend === 'decreasing' ? '📉 تنازلي' : '➡️ مستقر'}
                     </p>
                   </div>
+                  <div className="text-center p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-400 text-sm mb-2">العامل الموسمي</p>
+                    <p className="text-2xl font-bold text-purple-500">
+                      {prediction.seasonalFactor}x
+                    </p>
+                  </div>
                 </div>
+                
+                {prediction.riskFactors.length > 0 && (
+                  <div className="p-4 bg-yellow-900/20 border border-yellow-600 rounded-lg">
+                    <p className="text-sm text-yellow-400 mb-2">عوامل الخطر:</p>
+                    <ul className="list-disc list-inside text-sm text-yellow-300">
+                      {prediction.riskFactors.map((risk, i) => (
+                        <li key={i}>{risk}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
@@ -623,7 +636,7 @@ export default function AccountingIntelligencePage() {
 
         {/* الامتثال */}
         {activeTab === 'compliance' && analysisResult && (
-          <Card className="bg-card border-border p-6">
+          <Card className="bg-gray-800 border-gray-700 p-6">
             <h3 className="text-xl font-semibold text-white mb-4">✅ فحوصات الامتثال</h3>
             {analysisResult.compliance.length > 0 ? (
               <div className="space-y-3">
@@ -661,7 +674,7 @@ export default function AccountingIntelligencePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">جميع فحوصات الامتثال ناجحة</p>
+              <p className="text-gray-400">جميع فحوصات الامتثال ناجحة</p>
             )}
           </Card>
         )}
@@ -669,12 +682,12 @@ export default function AccountingIntelligencePage() {
         {/* التوصيات */}
         {activeTab === 'recommendations' && analysisResult && (
           <div className="space-y-6">
-            <Card className="bg-card border-border p-6">
+            <Card className="bg-gray-800 border-gray-700 p-6">
               <h3 className="text-xl font-semibold text-white mb-4">💡 التوصيات الذكية</h3>
               {analysisResult.recommendations.length > 0 ? (
                 <div className="space-y-4">
                   {analysisResult.recommendations.map((rec, index) => (
-                    <div key={index} className="p-4 bg-muted rounded-lg">
+                    <div key={index} className="p-4 bg-gray-700 rounded-lg">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -698,17 +711,17 @@ export default function AccountingIntelligencePage() {
                       
                       <div className="space-y-2">
                         <div>
-                          <p className="text-sm text-muted-foreground">التوصية:</p>
+                          <p className="text-sm text-gray-400">التوصية:</p>
                           <p className="text-white">{rec.recommendation}</p>
                         </div>
                         
                         <div>
-                          <p className="text-sm text-muted-foreground">التأثير المتوقع:</p>
+                          <p className="text-sm text-gray-400">التأثير المتوقع:</p>
                           <p className="text-green-400">{rec.expectedImpact}</p>
                         </div>
                         
                         <div>
-                          <p className="text-sm text-muted-foreground">خطة التنفيذ:</p>
+                          <p className="text-sm text-gray-400">خطة التنفيذ:</p>
                           <p className="text-blue-400">{rec.implementation}</p>
                         </div>
                       </div>
@@ -716,7 +729,7 @@ export default function AccountingIntelligencePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">لا توجد توصيات في الوقت الحالي</p>
+                <p className="text-gray-400">لا توجد توصيات في الوقت الحالي</p>
               )}
             </Card>
             
