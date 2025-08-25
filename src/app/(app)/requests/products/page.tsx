@@ -30,7 +30,7 @@ type CartItem = {
 };
 
 // --- Invoice Component ---
-const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: number }>(({ cart, total }, ref) => {
+const Invoice = ({ cart, total }: { cart: CartItem[], total: number }) => {
     const { currentBranch } = useContext(BranchContext);
     const { user } = useAuth();
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
@@ -39,9 +39,9 @@ const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: numb
     const grandTotal = total + vat;
 
     return (
-        <div ref={ref} className="p-6 bg-card text-card-foreground rounded-lg border">
+        <div className="printable-content p-6 bg-card text-card-foreground rounded-lg border">
             <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-primary">فاتورة ضريبية مبسطة</h2>
+                <h2 className="text-2xl font-bold text-primary">فاتورة طلبات ضريبية مبسطة</h2>
                 <p className="text-sm text-muted-foreground">{branchName}</p>
             </div>
             <div className="flex justify-between text-sm mb-4">
@@ -85,8 +85,7 @@ const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: numb
             </div>
         </div>
     );
-});
-Invoice.displayName = 'Invoice';
+};
 
 // --- Main Page Component ---
 export default function ProductRequestsPage() {
@@ -132,84 +131,79 @@ export default function ProductRequestsPage() {
         setCart([]);
         toast({
             variant: "destructive",
-            title: "تم إلغاء الفاتورة",
+            title: "تم إلغاء فاتورة الطلبات",
             description: "تم مسح جميع المنتجات من السلة.",
         });
     }
 
     return (
-        <>
-            <div className="printable-content hidden print:block">
-                <Invoice cart={cart} total={total} />
+        <div className="grid lg:grid-cols-2 gap-6">
+            {/* Left Side: Invoice and Actions */}
+            <div className="flex flex-col gap-6">
+                <Card>
+                    <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <CardTitle>فاتورة الطلبات الحالية</CardTitle>
+                            <CardDescription>إجمالي {cart.length} منتجات</CardDescription>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                            <Button size="lg" disabled={cart.length === 0} onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                طباعة
+                            </Button>
+                            <Button variant="destructive" size="lg" disabled={cart.length === 0} onClick={handleClearCart}>
+                                إلغاء
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {cart.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+                                <ShoppingCart className="h-12 w-12 mb-4" />
+                                <h3 className="text-lg font-semibold">فاتورة الطلبات فارغة</h3>
+                                <p>أضف منتجات من القائمة لبدء فاتورة جديدة.</p>
+                            </div>
+                        ) : (
+                            <Invoice cart={cart} total={total} />
+                        )}
+                    </CardContent>
+                </Card>
             </div>
-            <div className="non-printable grid lg:grid-cols-2 gap-6">
-                {/* Left Side: Invoice and Actions */}
-                <div className="flex flex-col gap-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-start justify-between">
-                            <div>
-                                <CardTitle>الفاتورة الحالية</CardTitle>
-                                <CardDescription>إجمالي {cart.length} منتجات</CardDescription>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button size="lg" disabled={cart.length === 0} onClick={handlePrint}>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    طباعة
-                                </Button>
-                                <Button variant="destructive" size="lg" disabled={cart.length === 0} onClick={handleClearCart}>
-                                   إلغاء
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {cart.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
-                                    <ShoppingCart className="h-12 w-12 mb-4" />
-                                    <h3 className="text-lg font-semibold">الفاتورة فارغة</h3>
-                                    <p>أضف منتجات من القائمة لبدء فاتورة جديدة.</p>
-                                </div>
-                            ) : (
-                                <Invoice cart={cart} total={total} />
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
 
-                {/* Right Side: Products List */}
-                <div className="md:col-span-1">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>قائمة المنتجات</CardTitle>
-                            <div className="relative mt-2">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="ابحث عن منتج..." 
-                                    className="pl-10" 
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
-                            {filteredProducts.map(product => (
-                                <div key={product.id} className="flex items-center gap-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
-                                    <Image data-ai-hint={`${product.category}`} src={`https://picsum.photos/seed/${product.id}/100/100`} alt={product.name} width={64} height={64} className="rounded-md object-cover" />
-                                    <div className="flex-grow">
-                                        <h4 className="font-semibold">{product.name}</h4>
-                                        <p className="text-sm text-muted-foreground">{product.price.toFixed(2)} ريال</p>
-                                    </div>
-                                    <Button size="icon" variant="outline" onClick={() => handleAddToCart(product)}>
-                                        <CirclePlus className="h-5 w-5 text-primary" />
-                                    </Button>
+            {/* Right Side: Products List */}
+            <div className="md:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>قائمة المنتجات</CardTitle>
+                        <div className="relative mt-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="ابحث عن منتج..." 
+                                className="pl-10" 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
+                        {filteredProducts.map(product => (
+                            <div key={product.id} className="flex items-center gap-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <Image data-ai-hint={`${product.category}`} src={`https://picsum.photos/seed/${product.id}/100/100`} alt={product.name} width={64} height={64} className="rounded-md object-cover" />
+                                <div className="flex-grow">
+                                    <h4 className="font-semibold">{product.name}</h4>
+                                    <p className="text-sm text-muted-foreground">{product.price.toFixed(2)} ريال</p>
                                 </div>
-                            ))}
-                             {filteredProducts.length === 0 && (
-                                <p className="text-center text-muted-foreground py-4">لا توجد منتجات تطابق بحثك.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                                <Button size="icon" variant="outline" onClick={() => handleAddToCart(product)}>
+                                    <CirclePlus className="h-5 w-5 text-primary" />
+                                </Button>
+                            </div>
+                        ))}
+                            {filteredProducts.length === 0 && (
+                            <p className="text-center text-muted-foreground py-4">لا توجد منتجات تطابق بحثك.</p>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
-        </>
+        </div>
     );
 }

@@ -19,7 +19,7 @@ function getPageTitle(pathname: string) {
     if (pathname.startsWith('/expenses')) return 'المصاريف';
     if (pathname.startsWith('/bonuses')) return 'البونص';
     if (pathname.startsWith('/requests/employees')) return 'طلبات الموظفين';
-    if (pathname.startsWith('/requests/products')) return 'نقطة البيع';
+    if (pathname.startsWith('/requests/products')) return 'طلبات المنتجات';
     if (pathname.startsWith('/users')) return 'إدارة المستخدمين';
     if (pathname.startsWith('/reports')) return 'التقارير';
     if (pathname.startsWith('/settings')) return 'الإعدادات';

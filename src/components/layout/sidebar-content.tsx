@@ -36,7 +36,7 @@ const menuItems = [
   { href: "/expenses", label: "المصاريف", icon: TrendingDown },
   { href: "/bonuses", label: "البونص", icon: Award },
   { href: "/requests/employees", label: "طلبات الموظفين", icon: FileText },
-  { href: "/requests/products", label: "نقطة البيع", icon: ShoppingBasket },
+  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket },
   { href: "/users", label: "إدارة المستخدمين", icon: Users },
   { href: "/reports", label: "التقارير", icon: BarChart3 },
   { href: "/settings", label: "الإعدادات", icon: Settings },
