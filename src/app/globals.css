@@ -86,3 +86,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+@layer utilities {
+  @media print {
+    .non-printable {
+      display: none;
+    }
+    .printable-content {
+      display: block !important;
+    }
+    body > * {
+      display: none;
+    }
+    body > .printable-content {
+      display: block;
+    }
+  }
+}

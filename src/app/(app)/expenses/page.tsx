@@ -24,8 +24,8 @@ const initialExpenses = [
 
 type Expense = typeof initialExpenses[0];
 
-const PrintableExpenses = React.forwardRef<HTMLDivElement, { expenses: Expense[] }>(({ expenses }, ref) => (
-    <div ref={ref} className="p-8">
+const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => (
+    <div className="p-8">
         <div className="text-center mb-6">
             <h1 className="text-2xl font-bold">تقرير المصروفات</h1>
             <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
@@ -53,8 +53,7 @@ const PrintableExpenses = React.forwardRef<HTMLDivElement, { expenses: Expense[]
             </TableBody>
         </Table>
     </div>
-));
-PrintableExpenses.displayName = "PrintableExpenses";
+);
 
 
 export default function ExpensesPage() {
@@ -62,7 +61,6 @@ export default function ExpensesPage() {
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-  const printRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -147,170 +145,154 @@ export default function ExpensesPage() {
 
   return (
     <>
-      <style jsx global>{`
-          @media print {
-              body > *:not(#printable-area) {
-                  display: none;
-              }
-              #printable-area, #printable-area * {
-                  visibility: visible;
-              }
-              #printable-area {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-              }
-          }
-      `}</style>
-      <Tabs defaultValue="add-expense" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
-          <TabsTrigger value="add-expense">
-            <CirclePlus className="ms-2" />
-            إضافة مصروف
-          </TabsTrigger>
-          <TabsTrigger value="view-expenses">
-            <ListOrdered className="ms-2" />
-            عرض المصاريف
-          </TabsTrigger>
-        </TabsList>
+      <div className="printable-content hidden print:block">
+        <PrintableExpenses expenses={filteredExpenses} />
+      </div>
+      <div className="non-printable">
+        <Tabs defaultValue="add-expense" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
+            <TabsTrigger value="add-expense">
+              <CirclePlus className="ms-2" />
+              إضافة مصروف
+            </TabsTrigger>
+            <TabsTrigger value="view-expenses">
+              <ListOrdered className="ms-2" />
+              عرض المصاريف
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="add-expense" className="mt-4">
+          <TabsContent value="add-expense" className="mt-4">
+              <Card>
+                  <CardHeader>
+                  <CardTitle>إضافة مصروف جديد</CardTitle>
+                  <CardDescription>سجل المصروفات الجديدة للفروع.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSaveExpense} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                              <Label htmlFor="expense-date">تاريخ المصروف</Label>
+                              <Input id="expense-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                          </div>
+                          <div>
+                              <Label htmlFor="expense-branch">الفرع</Label>
+                              <Select value={branch} onValueChange={setBranch}>
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="اختر الفرع" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="laban">فرع لبن</SelectItem>
+                                      <SelectItem value="tuwaiq">فرع طويق</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div>
+                              <Label htmlFor="expense-category">بند المصروف</Label>
+                              <Select value={category} onValueChange={setCategory}>
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="اختر البند" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="فواتير">فواتير (كهرباء, ماء, انترنت)</SelectItem>
+                                      <SelectItem value="رواتب">رواتب</SelectItem>
+                                      <SelectItem value="صيانة">صيانة</SelectItem>
+                                      <SelectItem value="مستلزمات">مستلزمات تشغيلية</SelectItem>
+                                      <SelectItem value="إيجار">إيجار</SelectItem>
+                                      <SelectItem value="أخرى">أخرى</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <Label htmlFor="expense-amount">المبلغ (ريال)</Label>
+                              <Input id="expense-amount" type="number" placeholder="مثال: 500" value={amount} onChange={e => setAmount(e.target.value)} />
+                          </div>
+                          <div>
+                              <Label htmlFor="expense-description">الوصف / ملاحظات</Label>
+                              <Textarea id="expense-description" placeholder="اكتب وصفاً موجزاً للمصروف..." value={description} onChange={e => setDescription(e.target.value)} />
+                          </div>
+                      </div>
+                      <div className="flex justify-end">
+                          <Button type="submit" size="lg">حفظ المصروف</Button>
+                      </div>
+                    </form>
+                  </CardContent>
+              </Card>
+          </TabsContent>
+          <TabsContent value="view-expenses" className="mt-4">
             <Card>
-                <CardHeader>
-                <CardTitle>إضافة مصروف جديد</CardTitle>
-                <CardDescription>سجل المصروفات الجديدة للفروع.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSaveExpense} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <Label htmlFor="expense-date">تاريخ المصروف</Label>
-                            <Input id="expense-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
-                        </div>
-                         <div>
-                            <Label htmlFor="expense-branch">الفرع</Label>
-                            <Select value={branch} onValueChange={setBranch}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="اختر الفرع" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="laban">فرع لبن</SelectItem>
-                                    <SelectItem value="tuwaiq">فرع طويق</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="expense-category">بند المصروف</Label>
-                             <Select value={category} onValueChange={setCategory}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="اختر البند" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="فواتير">فواتير (كهرباء, ماء, انترنت)</SelectItem>
-                                    <SelectItem value="رواتب">رواتب</SelectItem>
-                                    <SelectItem value="صيانة">صيانة</SelectItem>
-                                    <SelectItem value="مستلزمات">مستلزمات تشغيلية</SelectItem>
-                                    <SelectItem value="إيجار">إيجار</SelectItem>
-                                    <SelectItem value="أخرى">أخرى</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="expense-amount">المبلغ (ريال)</Label>
-                            <Input id="expense-amount" type="number" placeholder="مثال: 500" value={amount} onChange={e => setAmount(e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="expense-description">الوصف / ملاحظات</Label>
-                            <Textarea id="expense-description" placeholder="اكتب وصفاً موجزاً للمصروف..." value={description} onChange={e => setDescription(e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="flex justify-end">
-                        <Button type="submit" size="lg">حفظ المصروف</Button>
-                    </div>
-                  </form>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="view-expenses" className="mt-4">
-           <Card>
-                <CardHeader>
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <CardTitle>سجل المصروفات</CardTitle>
-                            <CardDescription>عرض وبحث في المصروفات المسجلة.</CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                            <div className="relative flex-grow">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="ابحث بالوصف أو البند أو الفرع..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
-                            </div>
-                            <Button variant="outline" size="icon" onClick={handlePrint}>
-                                <Printer className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <TooltipProvider>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>التاريخ</TableHead>
-                                    <TableHead>الفرع</TableHead>
-                                    <TableHead>البند</TableHead>
-                                    <TableHead>المبلغ</TableHead>
-                                    <TableHead>الوصف</TableHead>
-                                    <TableHead>إجراءات</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredExpenses.length === 0 ? (
-                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                                            لا توجد مصروفات لعرضها.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredExpenses.map((expense) => (
-                                    <TableRow key={expense.id}>
-                                        <TableCell>{expense.date}</TableCell>
-                                        <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
-                                        <TableCell>{expense.category}</TableCell>
-                                        <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
-                                        <TableCell>{expense.description}</TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-2">
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(expense.id)}><FilePenLine className="h-4 w-4" /></Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>تعديل</p></TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(expense.id)}><Trash2 className="h-4 w-4" /></Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>حذف</p></TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TooltipProvider>
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
-      <div className="invisible">
-        <div id="printable-area">
-          <PrintableExpenses ref={printRef} expenses={filteredExpenses} />
-        </div>
+                  <CardHeader>
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                          <div>
+                              <CardTitle>سجل المصروفات</CardTitle>
+                              <CardDescription>عرض وبحث في المصروفات المسجلة.</CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2 w-full md:w-auto">
+                              <div className="relative flex-grow">
+                                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input placeholder="ابحث بالوصف أو البند أو الفرع..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
+                              </div>
+                              <Button variant="outline" size="icon" onClick={handlePrint}>
+                                  <Printer className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                  </CardHeader>
+                  <CardContent>
+                      <TooltipProvider>
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>التاريخ</TableHead>
+                                      <TableHead>الفرع</TableHead>
+                                      <TableHead>البند</TableHead>
+                                      <TableHead>المبلغ</TableHead>
+                                      <TableHead>الوصف</TableHead>
+                                      <TableHead>إجراءات</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {filteredExpenses.length === 0 ? (
+                                      <TableRow>
+                                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                              لا توجد مصروفات لعرضها.
+                                          </TableCell>
+                                      </TableRow>
+                                  ) : (
+                                      filteredExpenses.map((expense) => (
+                                      <TableRow key={expense.id}>
+                                          <TableCell>{expense.date}</TableCell>
+                                          <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
+                                          <TableCell>{expense.category}</TableCell>
+                                          <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
+                                          <TableCell>{expense.description}</TableCell>
+                                          <TableCell>
+                                              <div className="flex gap-2">
+                                                  <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                          <Button variant="ghost" size="icon" onClick={() => handleEdit(expense.id)}><FilePenLine className="h-4 w-4" /></Button>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent><p>تعديل</p></TooltipContent>
+                                                  </Tooltip>
+                                                  <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(expense.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent><p>حذف</p></TooltipContent>
+                                                  </Tooltip>
+                                              </div>
+                                          </TableCell>
+                                      </TableRow>
+                                      ))
+                                  )}
+                              </TableBody>
+                          </Table>
+                      </TooltipProvider>
+                  </CardContent>
+              </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );

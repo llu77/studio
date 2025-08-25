@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Clock, CirclePlus, ListOrdered, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState, useContext, useRef, useMemo } from "react";
+import React, { useState, useContext, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
 
@@ -39,8 +39,8 @@ const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" 
     rejected: { text: "تم الرفض", variant: "destructive", icon: X },
 };
 
-const PrintableRequests = React.forwardRef<HTMLDivElement, { requests: EmployeeRequest[], branch: string }>(({ requests, branch }, ref) => (
-    <div ref={ref} className="p-8">
+const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], branch: string }) => (
+    <div className="p-8">
         <div className="text-center mb-6">
             <h1 className="text-2xl font-bold">تقرير طلبات الموظفين الموافق عليها</h1>
             <p className="text-muted-foreground">الفرع: {branch === 'laban' ? 'لبن' : 'طويق'}</p>
@@ -67,8 +67,7 @@ const PrintableRequests = React.forwardRef<HTMLDivElement, { requests: EmployeeR
             </TableBody>
         </Table>
     </div>
-));
-PrintableRequests.displayName = "PrintableRequests";
+);
 
 
 export default function EmployeeRequestsPage() {
@@ -76,7 +75,6 @@ export default function EmployeeRequestsPage() {
     const { users } = useContext(UserContext);
     const { currentBranch } = useContext(BranchContext);
     const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
-    const printRef = useRef<HTMLDivElement>(null);
     
     // State for the new request form
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -150,160 +148,144 @@ export default function EmployeeRequestsPage() {
 
   return (
     <>
-       <style jsx global>{`
-          @media print {
-              body > *:not(#printable-area) {
-                  display: none;
-              }
-              #printable-area, #printable-area * {
-                  visibility: visible;
-              }
-              #printable-area {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-              }
-          }
-      `}</style>
-       <Tabs defaultValue="view-requests" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
-          <TabsTrigger value="add-request">
-            <CirclePlus className="ms-2" />
-            تقديم طلب
-          </TabsTrigger>
-          <TabsTrigger value="view-requests">
-            <ListOrdered className="ms-2" />
-            متابعة الطلبات
-          </TabsTrigger>
-        </TabsList>
+      <div className="printable-content hidden print:block">
+        <PrintableRequests requests={approvedRequests} branch={currentBranch} />
+      </div>
+      <div className="non-printable">
+        <Tabs defaultValue="view-requests" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
+            <TabsTrigger value="add-request">
+                <CirclePlus className="ms-2" />
+                تقديم طلب
+            </TabsTrigger>
+            <TabsTrigger value="view-requests">
+                <ListOrdered className="ms-2" />
+                متابعة الطلبات
+            </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="add-request" className="mt-4">
-            <Card>
-                <CardHeader>
-                <CardTitle>تقديم طلب موظف جديد</CardTitle>
-                <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين (سلفة, إجازة, إلخ).</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmitRequest} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="employee-name">اسم الموظف</Label>
-                                <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="اختر الموظف" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {users.filter(u => u.role !== 'مدير النظام').map(user => (
-                                            <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+            <TabsContent value="add-request" className="mt-4">
+                <Card>
+                    <CardHeader>
+                    <CardTitle>تقديم طلب موظف جديد</CardTitle>
+                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين (سلفة, إجازة, إلخ).</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmitRequest} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="employee-name">اسم الموظف</Label>
+                                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="اختر الموظف" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                                <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="request-type">نوع الطلب</Label>
+                                    <Select value={requestType} onValueChange={setRequestType}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="اختر نوع الطلب" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="سلفة">سلفة</SelectItem>
+                                            <SelectItem value="إجازة">إجازة</SelectItem>
+                                            <SelectItem value="طلب آخر">طلب آخر</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <div>
-                                <Label htmlFor="request-type">نوع الطلب</Label>
-                                <Select value={requestType} onValueChange={setRequestType}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="اختر نوع الطلب" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="سلفة">سلفة</SelectItem>
-                                        <SelectItem value="إجازة">إجازة</SelectItem>
-                                        <SelectItem value="طلب آخر">طلب آخر</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="request-details">تفاصيل الطلب (المبلغ، مدة الإجازة، إلخ)</Label>
+                                <Textarea 
+                                    id="request-details" 
+                                    placeholder="مثال: سلفة بقيمة 500 ريال، أو إجازة لمدة 5 أيام" 
+                                    value={requestDetails}
+                                    onChange={(e) => setRequestDetails(e.target.value)}
+                                />
                             </div>
-                        </div>
+                            <div className="flex justify-end">
+                                <Button type="submit" size="lg">إرسال الطلب</Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="view-requests" className="mt-4">
+                <Card>
+                    <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <Label htmlFor="request-details">تفاصيل الطلب (المبلغ، مدة الإجازة، إلخ)</Label>
-                            <Textarea 
-                                id="request-details" 
-                                placeholder="مثال: سلفة بقيمة 500 ريال، أو إجازة لمدة 5 أيام" 
-                                value={requestDetails}
-                                onChange={(e) => setRequestDetails(e.target.value)}
-                            />
+                            <CardTitle>إدارة طلبات الموظفين</CardTitle>
+                            <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
                         </div>
-                        <div className="flex justify-end">
-                            <Button type="submit" size="lg">إرسال الطلب</Button>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-        <TabsContent value="view-requests" className="mt-4">
-            <Card>
-                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <CardTitle>إدارة طلبات الموظفين</CardTitle>
-                        <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
-                    </div>
-                    <Button variant="outline" onClick={handlePrint} disabled={approvedRequests.length === 0}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        طباعة الطلبات الموافق عليها
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>التاريخ</TableHead>
-                                <TableHead>الموظف</TableHead>
-                                <TableHead>نوع الطلب</TableHead>
-                                <TableHead>التفاصيل</TableHead>
-                                <TableHead>الحالة</TableHead>
-                                <TableHead className="text-left">إجراء</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                        {requests.map((req) => {
-                            const statusInfo = statusMap[req.status];
-                            const StatusIcon = statusInfo.icon;
-                            return (
-                                <TableRow key={req.id}>
-                                    <TableCell>{req.date}</TableCell>
-                                    <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
-                                    <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
-                                    <TableCell>{req.details}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={statusInfo.variant} className="gap-1">
-                                            <StatusIcon className="h-3 w-3" />
-                                            {statusInfo.text}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-left">
-                                        {req.status === 'pending' && (
-                                            <div className="flex gap-1 justify-end">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusChange(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>موافقة</p></TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusChange(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>رفض</p></TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        )}
-                                    </TableCell>
+                        <Button variant="outline" onClick={handlePrint} disabled={approvedRequests.length === 0}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            طباعة الطلبات الموافق عليها
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>التاريخ</TableHead>
+                                    <TableHead>الموظف</TableHead>
+                                    <TableHead>نوع الطلب</TableHead>
+                                    <TableHead>التفاصيل</TableHead>
+                                    <TableHead>الحالة</TableHead>
+                                    <TableHead className="text-left">إجراء</TableHead>
                                 </TableRow>
-                            );
-                        })}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
-      <div className="invisible">
-        <div id="printable-area">
-          <PrintableRequests ref={printRef} requests={approvedRequests} branch={currentBranch} />
-        </div>
+                            </TableHeader>
+                            <TableBody>
+                            {requests.map((req) => {
+                                const statusInfo = statusMap[req.status];
+                                const StatusIcon = statusInfo.icon;
+                                return (
+                                    <TableRow key={req.id}>
+                                        <TableCell>{req.date}</TableCell>
+                                        <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
+                                        <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
+                                        <TableCell>{req.details}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={statusInfo.variant} className="gap-1">
+                                                <StatusIcon className="h-3 w-3" />
+                                                {statusInfo.text}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-left">
+                                            {req.status === 'pending' && (
+                                                <div className="flex gap-1 justify-end">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusChange(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>موافقة</p></TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusChange(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>رفض</p></TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
       </div>
     </>
   );
