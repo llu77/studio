@@ -509,8 +509,91 @@ export function analyzeBehavioralPatterns(
 
 export interface FinancialPrediction {
   nextPeriod: number
-  trend: 'increasing' | 'decreasing' | 'stable'
   confidence: number
+  trend: 'increasing' | 'decreasing' | 'stable'
+  seasonalFactor: number
+  riskFactors: string[]
+}
+
+// تنبؤ بسيط باستخدام المتوسط المتحرك الموزون
+export function predictFinancialMetric(
+  historicalData: number[],
+  weights?: number[]
+): FinancialPrediction {
+  if (historicalData.length < 3) {
+    return {
+      nextPeriod: historicalData[historicalData.length - 1] || 0,
+      confidence: 0,
+      trend: 'stable',
+      seasonalFactor: 1,
+      riskFactors: ['بيانات تاريخية غير كافية']
+    }
+  }
+  
+  // أوزان افتراضية (الأحدث أكثر أهمية)
+  if (!weights) {
+    weights = []
+    for (let i = 0; i < historicalData.length; i++) {
+      weights.push(Math.exp(-i * 0.3))
+    }
+  }
+  
+  // تطبيع الأوزان
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  const normalizedWeights = weights.map(w => w / totalWeight)
+  
+  // حساب المتوسط المرجح
+  let prediction = 0
+  for (let i = 0; i < historicalData.length; i++) {
+    prediction += historicalData[historicalData.length - 1 - i] * normalizedWeights[i]
+  }
+  
+  // تحديد الاتجاه
+  const recentAvg = historicalData.slice(-3).reduce((sum, val) => sum + val, 0) / 3
+  const olderAvg = historicalData.slice(-6, -3).reduce((sum, val) => sum + val, 0) / 3
+  
+  let trend: 'increasing' | 'decreasing' | 'stable'
+  if (recentAvg > olderAvg * 1.05) {
+    trend = 'increasing'
+  } else if (recentAvg < olderAvg * 0.95) {
+    trend = 'decreasing'
+  } else {
+    trend = 'stable'
+  }
+  
+  // حساب العامل الموسمي
+  const seasonalFactor = historicalData.length >= 12 
+    ? historicalData[historicalData.length - 12] / olderAvg 
+    : 1
+  
+  // تحديد عوامل الخطر
+  const riskFactors: string[] = []
+  const volatility = Math.sqrt(
+    historicalData.reduce((sum, val) => sum + Math.pow(val - recentAvg, 2), 0) / historicalData.length
+  )
+  
+  if (volatility > recentAvg * 0.3) {
+    riskFactors.push('تذبذب عالي في البيانات')
+  }
+  
+  if (trend === 'decreasing' && prediction < recentAvg * 0.8) {
+    riskFactors.push('انخفاض متسارع متوقع')
+  }
+  
+  if (Math.abs(seasonalFactor - 1) > 0.2) {
+    riskFactors.push('تأثير موسمي قوي')
+  }
+  
+  // حساب مستوى الثقة
+  const confidence = Math.max(0, Math.min(100, 100 - volatility / recentAvg * 100))
+  
+  return {
+    nextPeriod: Math.round(prediction * 100) / 100,
+    confidence: Math.round(confidence),
+    trend,
+    seasonalFactor: Math.round(seasonalFactor * 100) / 100,
+    riskFactors
+  }
 }
 
 // ============= نظام الامتثال =============
@@ -691,7 +774,7 @@ export function generateIntelligentRecommendations(
   }
   
   // توصيات التنبؤ
-  if (analysis.predictions?.trend === 'decreasing') {
+  if (analysis.predictions?.trend === 'decreasing' && analysis.predictions.riskFactors.length > 0) {
     recommendations.push({
       category: 'التخطيط المالي',
       priority: 'medium',
@@ -1010,4 +1093,6 @@ export function calculateKPIs(data: {
     revenuePerEmployee: data.employees > 0 ? data.revenue / data.employees : 0,
     revenuePerCustomer: data.customers > 0 ? data.revenue / data.customers : 0,
     expenseRatio: data.revenue > 0 ? (data.expenses / data.revenue) * 100 : 0,
-    productivityIndex: data.employees > 0 ? (data.revenue
+    productivityIndex: data.employees > 0 ? (data.revenue - data.expenses) / data.employees : 0
+  }
+}
