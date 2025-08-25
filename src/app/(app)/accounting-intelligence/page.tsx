@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
@@ -12,7 +12,7 @@ import {
   calculateEfficiencyRatios,
   detectStatisticalAnomalies,
   analyzeBehavioralPatterns,
-  predictFinancialMetric,
+  forecastRevenue,
   performComplianceChecks,
   generateIntelligentRecommendations,
   type BenfordAnalysis,
@@ -26,7 +26,7 @@ import {
   type ComplianceCheck,
   type IntelligentRecommendation
 } from '@/lib/accounting-intelligence'
-import { useAuth } from '@/hooks/use-auth'
+import Sidebar from '@/components/Sidebar'
 
 interface AnalysisResult {
   benford: BenfordAnalysis | null
@@ -47,17 +47,18 @@ export default function AccountingIntelligencePage() {
   const [activeTab, setActiveTab] = useState<'fraud' | 'ratios' | 'anomalies' | 'predictions' | 'compliance' | 'recommendations'>('fraud')
   const [selectedPeriod, setSelectedPeriod] = useState('current')
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth();
-
 
   useEffect(() => {
-    if (!authLoading && !user) {
-       router.push('/login');
-    } else if(user) {
-        performAnalysis()
-    }
-  }, [selectedPeriod, user, authLoading, router])
+    checkAuth()
+    performAnalysis()
+  }, [selectedPeriod])
 
+  const checkAuth = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem('token') : null
+    if (!token) {
+      router.push('/')
+    }
+  }
 
   const performAnalysis = async () => {
     setLoading(true)
@@ -84,8 +85,8 @@ export default function AccountingIntelligencePage() {
       
       // التنبؤات
       const predictions = new Map<string, FinancialPrediction>()
-      predictions.set('revenue', predictFinancialMetric(historicalRevenue))
-      predictions.set('expenses', predictFinancialMetric(historicalRevenue.map(r => r * 0.78)))
+      predictions.set('revenue', forecastRevenue(historicalRevenue))
+      predictions.set('expenses', forecastRevenue(historicalRevenue.map(r => r * 0.78)))
       
       // فحوصات الامتثال
       const compliance = performComplianceChecks({
@@ -199,7 +200,7 @@ export default function AccountingIntelligencePage() {
     }
   }
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-xl">جاري التحليل الذكي...</div>
@@ -208,6 +209,9 @@ export default function AccountingIntelligencePage() {
   }
 
   return (
+    <div className="min-h-screen bg-gray-900 flex">
+      <Sidebar />
+      
       <div className="flex-1 p-8 text-white">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">نظام الذكاء المحاسبي</h1>
@@ -601,7 +605,7 @@ export default function AccountingIntelligencePage() {
                   <div className="text-center p-4 bg-muted rounded-lg">
                     <p className="text-muted-foreground text-sm mb-2">مستوى الثقة</p>
                     <p className="text-2xl font-bold text-green-500">
-                      {prediction.confidence}%
+                      {(prediction.confidence * 100).toFixed(0)}%
                     </p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
@@ -611,24 +615,7 @@ export default function AccountingIntelligencePage() {
                        prediction.trend === 'decreasing' ? '📉 تنازلي' : '➡️ مستقر'}
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-muted-foreground text-sm mb-2">العامل الموسمي</p>
-                    <p className="text-2xl font-bold text-purple-500">
-                      {prediction.seasonalFactor}x
-                    </p>
-                  </div>
                 </div>
-                
-                {prediction.riskFactors.length > 0 && (
-                  <div className="p-4 bg-yellow-900/20 border border-yellow-600 rounded-lg">
-                    <p className="text-sm text-yellow-400 mb-2">عوامل الخطر:</p>
-                    <ul className="list-disc list-inside text-sm text-yellow-300">
-                      {prediction.riskFactors.map((risk, i) => (
-                        <li key={i}>{risk}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </Card>
             ))}
           </div>
@@ -745,5 +732,6 @@ export default function AccountingIntelligencePage() {
           </div>
         )}
       </div>
+    </div>
   )
 }
