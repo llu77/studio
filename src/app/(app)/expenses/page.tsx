@@ -1,6 +1,6 @@
 
 'use client';
-import { Header } from "@/components/layout/header";
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +12,81 @@ import { Badge } from "@/components/ui/badge";
 import { CirclePlus, ListOrdered, FilePenLine, Trash2, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 
-const mockExpenses = [
+const initialExpenses = [
     { id: 'EXP001', date: '2024-07-21', branch: 'فرع لبن', category: 'فواتير', amount: 450.00, description: 'فاتورة كهرباء شهر يوليو' },
     { id: 'EXP002', date: '2024-07-20', branch: 'فرع طويق', category: 'صيانة', amount: 1200.00, description: 'إصلاح مكيف الهواء' },
     { id: 'EXP003', date: '2024-07-20', branch: 'فرع لبن', category: 'مستلزمات', amount: 250.50, description: 'شراء أدوات نظافة' },
     { id: 'EXP004', date: '2024-07-19', branch: 'فرع طويق', category: 'رواتب', amount: 8500.00, description: 'رواتب الموظفين' },
 ];
 
+type Expense = typeof initialExpenses[0];
+
 
 export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(initialExpenses);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [branch, setBranch] = useState('');
+  const [category, setCategory] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const { toast } = useToast();
+
+  const handleSaveExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!date || !branch || !category || !amount || !description) {
+        toast({
+            variant: "destructive",
+            title: "خطأ",
+            description: "الرجاء تعبئة جميع الحقول المطلوبة.",
+        });
+        return;
+    }
+    const newExpense: Expense = {
+        id: `EXP${String(expenses.length + 1).padStart(3, '0')}`,
+        date,
+        branch: branch === 'laban' ? 'فرع لبن' : 'فرع طويق',
+        category,
+        amount: parseFloat(amount),
+        description,
+    };
+    const updatedExpenses = [newExpense, ...expenses];
+    setExpenses(updatedExpenses);
+    setFilteredExpenses(updatedExpenses);
+
+    // Reset form
+    setDate(new Date().toISOString().split('T')[0]);
+    setBranch('');
+    setCategory('');
+    setAmount('');
+    setDescription('');
+
+    toast({
+        title: "تم الحفظ بنجاح",
+        description: "تمت إضافة المصروف الجديد إلى السجل.",
+        className: "bg-primary text-primary-foreground",
+    });
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    if (!term) {
+        setFilteredExpenses(expenses);
+    } else {
+        const results = expenses.filter(expense => 
+            expense.description.toLowerCase().includes(term.toLowerCase()) ||
+            expense.category.toLowerCase().includes(term.toLowerCase())
+        );
+        setFilteredExpenses(results);
+    }
+  }
+
+
   return (
     <>
       <Tabs defaultValue="add-expense" className="w-full">
@@ -43,15 +107,16 @@ export default function ExpensesPage() {
                 <CardTitle>إضافة مصروف جديد</CardTitle>
                 <CardDescription>سجل المصروفات الجديدة للفروع.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent>
+                  <form onSubmit={handleSaveExpense} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <Label htmlFor="expense-date">تاريخ المصروف</Label>
-                            <Input id="expense-date" type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                            <Input id="expense-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
                         </div>
                          <div>
                             <Label htmlFor="expense-branch">الفرع</Label>
-                            <Select>
+                            <Select value={branch} onValueChange={setBranch}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="اختر الفرع" />
                                 </SelectTrigger>
@@ -63,17 +128,17 @@ export default function ExpensesPage() {
                         </div>
                         <div>
                             <Label htmlFor="expense-category">بند المصروف</Label>
-                            <Select>
+                             <Select value={category} onValueChange={setCategory}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="اختر البند" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="bills">فواتير (كهرباء, ماء, انترنت)</SelectItem>
-                                    <SelectItem value="salaries">رواتب</SelectItem>
-                                    <SelectItem value="maintenance">صيانة</SelectItem>
-                                    <SelectItem value="supplies">مستلزمات تشغيلية</SelectItem>
-                                    <SelectItem value="rent">إيجار</SelectItem>
-                                    <SelectItem value="other">أخرى</SelectItem>
+                                    <SelectItem value="فواتير">فواتير (كهرباء, ماء, انترنت)</SelectItem>
+                                    <SelectItem value="رواتب">رواتب</SelectItem>
+                                    <SelectItem value="صيانة">صيانة</SelectItem>
+                                    <SelectItem value="مستلزمات">مستلزمات تشغيلية</SelectItem>
+                                    <SelectItem value="إيجار">إيجار</SelectItem>
+                                    <SelectItem value="أخرى">أخرى</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -81,16 +146,17 @@ export default function ExpensesPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="expense-amount">المبلغ (ريال)</Label>
-                            <Input id="expense-amount" type="number" placeholder="مثال: 500" />
+                            <Input id="expense-amount" type="number" placeholder="مثال: 500" value={amount} onChange={e => setAmount(e.target.value)} />
                         </div>
                         <div>
                             <Label htmlFor="expense-description">الوصف / ملاحظات</Label>
-                            <Textarea id="expense-description" placeholder="اكتب وصفاً موجزاً للمصروف..." />
+                            <Textarea id="expense-description" placeholder="اكتب وصفاً موجزاً للمصروف..." value={description} onChange={e => setDescription(e.target.value)} />
                         </div>
                     </div>
                     <div className="flex justify-end">
-                        <Button size="lg">حفظ المصروف</Button>
+                        <Button type="submit" size="lg">حفظ المصروف</Button>
                     </div>
+                  </form>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -104,7 +170,7 @@ export default function ExpensesPage() {
                         </div>
                         <div className="relative w-full md:w-1/3">
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="ابحث بالوصف أو البند..." className="pr-10" />
+                            <Input placeholder="ابحث بالوصف أو البند..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
                         </div>
                     </div>
                 </CardHeader>
@@ -122,31 +188,39 @@ export default function ExpensesPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockExpenses.map((expense) => (
-                                <TableRow key={expense.id}>
-                                    <TableCell>{expense.date}</TableCell>
-                                    <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
-                                    <TableCell>{expense.category}</TableCell>
-                                    <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
-                                    <TableCell>{expense.description}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon"><FilePenLine className="h-4 w-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>تعديل</p></TooltipContent>
-                                            </Tooltip>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>حذف</p></TooltipContent>
-                                            </Tooltip>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
+                                {filteredExpenses.length === 0 ? (
+                                     <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                            لا توجد مصروفات لعرضها.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredExpenses.map((expense) => (
+                                    <TableRow key={expense.id}>
+                                        <TableCell>{expense.date}</TableCell>
+                                        <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
+                                        <TableCell>{expense.category}</TableCell>
+                                        <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
+                                        <TableCell>{expense.description}</TableCell>
+                                        <TableCell>
+                                            <div className="flex gap-2">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon"><FilePenLine className="h-4 w-4" /></Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>تعديل</p></TooltipContent>
+                                                </Tooltip>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>حذف</p></TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </TooltipProvider>
