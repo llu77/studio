@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useContext } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, MinusCircle, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { UserContext } from "@/app/(app)/layout";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const revenueFormSchema = z.object({
     date: z.string({ required_error: "التاريخ مطلوب" }).min(1, "التاريخ مطلوب"),
@@ -46,6 +49,8 @@ type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 
 export function RevenueForm() {
     const { toast } = useToast();
+    const { users } = useContext(UserContext);
+
     const form = useForm<RevenueFormValues>({
         resolver: zodResolver(revenueFormSchema),
         defaultValues: {
@@ -152,13 +157,28 @@ export function RevenueForm() {
                             <div className="mt-4 space-y-4">
                                 {fields.map((field, index) => (
                                     <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row">
-                                        <FormField control={form.control} name={`distribution.${index}.employeeName`} render={({ field }) => (
-                                            <FormItem className="flex-1">
+                                        <FormField
+                                            control={form.control}
+                                            name={`distribution.${index}.employeeName`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
                                                 <FormLabel>اسم الموظف</FormLabel>
-                                                <FormControl><Input placeholder="عبدالحي" {...field} /></FormControl>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="اختر الموظف" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                                                <SelectItem key={user.id} value={user.name}>{user.name} ({user.branch})</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 <FormMessage />
-                                            </FormItem>
-                                        )} />
+                                                </FormItem>
+                                            )}
+                                        />
                                         <FormField control={form.control} name={`distribution.${index}.amount`} render={({ field }) => (
                                             <FormItem className="flex-1">
                                                 <FormLabel>المبلغ المستلم</FormLabel>
@@ -175,9 +195,10 @@ export function RevenueForm() {
                                 ))}
                             </div>
 
-                            {form.formState.errors.distribution && !form.formState.errors.distribution.root && (
-                                <p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.distribution.message}</p>
+                            {form.formState.errors.distribution?.root && (
+                                <p className="mt-2 text-sm font-medium text-destructive">{form.formState.errors.distribution.root.message}</p>
                             )}
+
 
                              {isDistributionUnbalanced && (
                                 <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
