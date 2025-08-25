@@ -13,14 +13,15 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import type { AuthError } from 'firebase/auth';
 
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, loading } = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@branchflow.com');
+  const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -33,12 +34,15 @@ export default function LoginPage() {
         description: "مرحباً بعودتك!",
       });
       router.push("/");
-    } catch (err: any) {
+    } catch (err) {
+        const authError = err as AuthError;
         let errorMessage = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
-        if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password') {
             errorMessage = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-        } else if (err.code === 'auth/invalid-email') {
+        } else if (authError.code === 'auth/invalid-email') {
             errorMessage = "صيغة البريد الإلكتروني غير صحيحة.";
+        } else if (authError.code) {
+            errorMessage = authError.message;
         }
         setError(errorMessage);
     }
