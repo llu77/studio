@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Clock, CirclePlus, ListOrdered } from "lucide-react";
+import { Check, X, Clock, CirclePlus, ListOrdered, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { UserContext } from "@/app/(app)/layout";
+import { UserContext, BranchContext } from "@/app/(app)/layout";
 
 const initialRequests = [
     { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
@@ -39,16 +39,53 @@ const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" 
     rejected: { text: "تم الرفض", variant: "destructive", icon: X },
 };
 
+const PrintableRequests = React.forwardRef<HTMLDivElement, { requests: EmployeeRequest[], branch: string }>(({ requests, branch }, ref) => (
+    <div ref={ref} className="p-8">
+        <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold">تقرير طلبات الموظفين الموافق عليها</h1>
+            <p className="text-muted-foreground">الفرع: {branch === 'laban' ? 'لبن' : 'طويق'}</p>
+            <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>التاريخ</TableHead>
+                    <TableHead>الموظف</TableHead>
+                    <TableHead>نوع الطلب</TableHead>
+                    <TableHead>التفاصيل</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {requests.map((req) => (
+                    <TableRow key={req.id}>
+                        <TableCell>{req.date}</TableCell>
+                        <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
+                        <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
+                        <TableCell>{req.details}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </div>
+));
+PrintableRequests.displayName = "PrintableRequests";
+
 
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
+    const { currentBranch } = useContext(BranchContext);
     const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
+    const printRef = useRef<HTMLDivElement>(null);
     
     // State for the new request form
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
+
+    const approvedRequests = useMemo(() => {
+        return requests.filter(req => req.status === 'approved');
+    }, [requests]);
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,9 +143,27 @@ export default function EmployeeRequestsPage() {
         });
     };
 
+    const handlePrint = () => {
+        window.print();
+    }
+
 
   return (
     <>
+       <style jsx global>{`
+          @media print {
+              body > :not(#printable-area) {
+                  display: none;
+              }
+              #printable-area {
+                  display: block;
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+              }
+          }
+      `}</style>
        <Tabs defaultValue="view-requests" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
           <TabsTrigger value="add-request">
@@ -176,9 +231,15 @@ export default function EmployeeRequestsPage() {
 
         <TabsContent value="view-requests" className="mt-4">
             <Card>
-                <CardHeader>
-                    <CardTitle>إدارة طلبات الموظفين</CardTitle>
-                    <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
+                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <CardTitle>إدارة طلبات الموظفين</CardTitle>
+                        <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={handlePrint} disabled={approvedRequests.length === 0}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        طباعة الطلبات الموافق عليها
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -237,6 +298,9 @@ export default function EmployeeRequestsPage() {
             </Card>
         </TabsContent>
       </Tabs>
+      <div id="printable-area" className="hidden">
+        <PrintableRequests ref={printRef} requests={approvedRequests} branch={currentBranch} />
+      </div>
     </>
   );
 }

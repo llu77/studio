@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlus, ListOrdered, FilePenLine, Trash2, Search } from "lucide-react";
+import { CirclePlus, ListOrdered, FilePenLine, Trash2, Search, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -24,12 +24,45 @@ const initialExpenses = [
 
 type Expense = typeof initialExpenses[0];
 
+const PrintableExpenses = React.forwardRef<HTMLDivElement, { expenses: Expense[] }>(({ expenses }, ref) => (
+    <div ref={ref} className="p-8">
+        <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold">تقرير المصروفات</h1>
+            <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
+        </div>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>التاريخ</TableHead>
+                    <TableHead>الفرع</TableHead>
+                    <TableHead>البند</TableHead>
+                    <TableHead>المبلغ</TableHead>
+                    <TableHead>الوصف</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {expenses.map((expense) => (
+                    <TableRow key={expense.id}>
+                        <TableCell>{expense.date}</TableCell>
+                        <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
+                        <TableCell>{expense.category}</TableCell>
+                        <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
+                        <TableCell>{expense.description}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </div>
+));
+PrintableExpenses.displayName = "PrintableExpenses";
+
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -107,9 +140,27 @@ export default function ExpensesPage() {
     });
   }
 
+  const handlePrint = () => {
+    window.print();
+  }
+
 
   return (
     <>
+      <style jsx global>{`
+          @media print {
+              body > :not(#printable-area) {
+                  display: none;
+              }
+              #printable-area {
+                  display: block;
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+              }
+          }
+      `}</style>
       <Tabs defaultValue="add-expense" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
           <TabsTrigger value="add-expense">
@@ -189,9 +240,14 @@ export default function ExpensesPage() {
                             <CardTitle>سجل المصروفات</CardTitle>
                             <CardDescription>عرض وبحث في المصروفات المسجلة.</CardDescription>
                         </div>
-                        <div className="relative w-full md:w-1/3">
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="ابحث بالوصف أو البند أو الفرع..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <div className="relative flex-grow">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="ابحث بالوصف أو البند أو الفرع..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
+                            </div>
+                            <Button variant="outline" size="icon" onClick={handlePrint}>
+                                <Printer className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -249,6 +305,9 @@ export default function ExpensesPage() {
             </Card>
         </TabsContent>
       </Tabs>
+      <div id="printable-area" className="hidden">
+        <PrintableExpenses ref={printRef} expenses={filteredExpenses} />
+      </div>
     </>
   );
 }
