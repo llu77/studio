@@ -26,6 +26,7 @@ import {
   Settings,
   LogOut,
   WalletCards,
+  BrainCircuit,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -41,6 +42,7 @@ const menuItems = [
   { href: "/users", label: "إدارة المستخدمين", icon: Users },
   { href: "/salaries", label: "الرواتب", icon: WalletCards },
   { href: "/reports", label: "التقارير", icon: BarChart3 },
+  { href: "/accounting-intelligence", label: "الذكاء المحاسبي", icon: BrainCircuit },
   { href: "/settings", label: "الإعدادات", icon: Settings },
 ];
 
