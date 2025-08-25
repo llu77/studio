@@ -1,63 +1,137 @@
 
 'use client';
-import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CirclePlus, Printer, Trash2, MinusCircle, Search } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import React, { useState } from "react";
+import { CirclePlus, Printer, Trash2, MinusCircle, Search, ShoppingCart } from "lucide-react";
+import React, { useState, useMemo, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { UserContext, BranchContext } from "@/app/(app)/layout";
+import { useAuth } from "@/hooks/use-auth";
+import Image from "next/image";
 
-const products = [
-    { id: 'PROD01', name: 'قهوة مختصة', price: 15.00 },
-    { id: 'PROD02', name: 'شاي كرك', price: 8.00 },
-    { id: 'PROD03', name: 'كرواسون جبن', price: 10.00 },
-    { id: 'PROD04', name: 'كيكة العسل', price: 20.00 },
+// --- Data ---
+const initialProducts = [
+    { id: 'PROD01', name: 'قهوة مختصة', price: 15.00, image: '/images/coffee.jpg', category: 'مشروبات حارة' },
+    { id: 'PROD02', name: 'شاي كرك', price: 8.00, image: '/images/karak.jpg', category: 'مشروبات حارة' },
+    { id: 'PROD03', name: 'كرواسون جبن', price: 10.00, image: '/images/croissant.jpg', category: 'مخبوزات' },
+    { id: 'PROD04', name: 'كيكة العسل', price: 20.00, image: '/images/honey-cake.jpg', category: 'حلويات' },
+    { id: 'PROD05', name: 'موهيتو', price: 12.00, image: '/images/mojito.jpg', category: 'مشروبات باردة' },
+    { id: 'PROD06', name: 'كوكيز', price: 7.00, image: '/images/cookies.jpg', category: 'حلويات' },
 ];
 
+type Product = typeof initialProducts[0];
 type CartItem = {
-    product: typeof products[0];
+    product: Product;
     quantity: number;
 };
 
+// --- Invoice Component ---
+const Invoice = React.forwardRef<HTMLDivElement, { cart: CartItem[], total: number }>(({ cart, total }, ref) => {
+    const { currentBranch } = useContext(BranchContext);
+    const { user } = useAuth();
+    const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
+    const today = new Date().toLocaleDateString('ar-SA');
+
+    return (
+        <div ref={ref} className="p-4 bg-card text-card-foreground rounded-lg border">
+            <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold text-primary">فاتورة ضريبية مبسطة</h2>
+                <p className="text-sm text-muted-foreground">{branchName}</p>
+            </div>
+            <div className="flex justify-between text-sm mb-4">
+                <span><span className="font-semibold">الموظف:</span> {user?.displayName || "غير محدد"}</span>
+                <span><span className="font-semibold">التاريخ:</span> {today}</span>
+            </div>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>المنتج</TableHead>
+                        <TableHead className="text-center">الكمية</TableHead>
+                        <TableHead className="text-right">الإجمالي</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {cart.map(item => (
+                        <TableRow key={item.product.id}>
+                            <TableCell>{item.product.name}</TableCell>
+                            <TableCell className="text-center">{item.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">{(item.product.price * item.quantity).toFixed(2)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            <div className="mt-4 space-y-2 border-t pt-2">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">الإجمالي الفرعي</span>
+                    <span className="font-semibold font-mono">{total.toFixed(2)} ريال</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">ضريبة القيمة المضافة (15%)</span>
+                    <span className="font-semibold font-mono">{(total * 0.15).toFixed(2)} ريال</span>
+                </div>
+                <div className="border-t pt-2 mt-2 flex justify-between items-center text-lg font-bold text-primary">
+                    <span>الإجمالي للدفع</span>
+                    <span className="font-mono">{(total * 1.15).toFixed(2)} ريال</span>
+                </div>
+            </div>
+        </div>
+    );
+});
+Invoice.displayName = 'Invoice';
+
+// --- Main Page Component ---
 export default function ProductRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
-    const [selectedProduct, setSelectedProduct] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+    const invoiceRef = React.useRef<HTMLDivElement>(null);
 
-    const handleAddProduct = () => {
-        if (!selectedProduct) return;
-        const productToAdd = products.find(p => p.id === selectedProduct);
-        if (!productToAdd) return;
+    const filteredProducts = useMemo(() => {
+        return initialProducts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [searchTerm]);
 
-        const existingItem = cart.find(item => item.product.id === productToAdd.id);
-        if (existingItem) {
-            setCart(cart.map(item => item.product.id === productToAdd.id ? { ...item, quantity: item.quantity + 1 } : item));
-        } else {
-            setCart([...cart, { product: productToAdd, quantity: 1 }]);
-        }
+    const handleAddToCart = (product: Product) => {
+        setCart(prevCart => {
+            const existingItem = prevCart.find(item => item.product.id === product.id);
+            if (existingItem) {
+                return prevCart.map(item =>
+                    item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                );
+            }
+            return [...prevCart, { product, quantity: 1 }];
+        });
     };
     
-    const handleRemoveItem = (productId: string) => {
+    const handleRemoveFromCart = (productId: string) => {
         setCart(cart.filter(item => item.product.id !== productId));
+    };
+
+    const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+        if (newQuantity < 1) {
+            handleRemoveFromCart(productId);
+            return;
+        }
+        setCart(cart.map(item => item.product.id === productId ? { ...item, quantity: newQuantity } : item));
     };
     
     const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-    const handlePrintInvoice = () => {
-        toast({
-            title: "جاري طباعة الفاتورة...",
-            description: `إجمالي الفاتورة: ${(total * 1.15).toFixed(2)} ريال`,
-        });
-        // Here you would typically trigger a print action
-        // For now, we just clear the cart
-        setCart([]);
+    const handlePrint = () => {
+        const printContents = invoiceRef.current?.innerHTML;
+        if (printContents) {
+            const originalContents = document.body.innerHTML;
+            document.body.innerHTML = printContents;
+            window.print();
+            document.body.innerHTML = originalContents;
+            // Restore event listeners if necessary, though for a simple print it's often not needed.
+            // A full solution might involve an iframe.
+        }
     };
 
-    const handleCancelInvoice = () => {
+    const handleClearCart = () => {
         setCart([]);
         toast({
             variant: "destructive",
@@ -66,99 +140,99 @@ export default function ProductRequestsPage() {
         });
     }
 
-  return (
-    <>
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>إنشاء فاتورة جديدة</CardTitle>
-                    <CardDescription>أضف المنتجات لإنشاء فاتورة جديدة للعميل.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex gap-2 mb-4">
-                        <Select onValueChange={setSelectedProduct}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر منتجاً لإضافته..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={handleAddProduct}>
-                            <CirclePlus className="mr-2 h-4 w-4" />
-                            إضافة للفاتورة
-                        </Button>
-                    </div>
-                     <div className="border rounded-lg overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>المنتج</TableHead>
-                                    <TableHead>الكمية</TableHead>
-                                    <TableHead>سعر الوحدة</TableHead>
-                                    <TableHead>الإجمالي</TableHead>
-                                    <TableHead>حذف</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {cart.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
-                                            الفاتورة فارغة.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                                {cart.map(item => (
-                                    <TableRow key={item.product.id}>
-                                        <TableCell>{item.product.name}</TableCell>
-                                        <TableCell>{item.quantity}</TableCell>
-                                        <TableCell>{item.product.price.toFixed(2)} ريال</TableCell>
-                                        <TableCell>{(item.product.price * item.quantity).toFixed(2)} ريال</TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.product.id)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="md:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>ملخص الفاتورة</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">الإجمالي الفرعي</span>
-                        <span className="font-semibold">{total.toFixed(2)} ريال</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">ضريبة القيمة المضافة (15%)</span>
-                        <span className="font-semibold">{(total * 0.15).toFixed(2)} ريال</span>
-                    </div>
-                    <div className="border-t pt-4 flex justify-between items-center text-lg font-bold text-primary">
-                        <span>الإجمالي للدفع</span>
-                        <span>{(total * 1.15).toFixed(2)} ريال</span>
-                    </div>
-                     <div className="space-y-2">
-                        <Button size="lg" className="w-full" disabled={cart.length === 0} onClick={handlePrintInvoice}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            طباعة الفاتورة
-                        </Button>
-                        <Button variant="outline" className="w-full" disabled={cart.length === 0} onClick={handleCancelInvoice}>
-                           إلغاء الفاتورة
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-      </div>
-    </>
-  );
+    return (
+        <>
+            <style jsx global>{`
+                @media print {
+                    body, html {
+                        visibility: hidden;
+                    }
+                    #printable-invoice, #printable-invoice * {
+                        visibility: visible;
+                    }
+                    #printable-invoice {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                }
+            `}</style>
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left Side: Invoice and Actions */}
+                <div className="flex flex-col gap-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>الفاتورة الحالية</CardTitle>
+                                <CardDescription>إجمالي {cart.length} منتجات</CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button size="lg" disabled={cart.length === 0} onClick={handlePrint}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    طباعة
+                                </Button>
+                                <Button variant="destructive" size="lg" disabled={cart.length === 0} onClick={handleClearCart}>
+                                   إلغاء
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {cart.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+                                    <ShoppingCart className="h-12 w-12 mb-4" />
+                                    <h3 className="text-lg font-semibold">الفاتورة فارغة</h3>
+                                    <p>أضف منتجات من القائمة لبدء فاتورة جديدة.</p>
+                                </div>
+                            ) : (
+                                <Invoice ref={invoiceRef} cart={cart} total={total} />
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Side: Products List */}
+                <div className="md:col-span-1">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>قائمة المنتجات</CardTitle>
+                            <div className="relative mt-2">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="ابحث عن منتج..." 
+                                    className="pr-10" 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+                            {filteredProducts.map(product => (
+                                <div key={product.id} className="flex items-center gap-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
+                                    <Image data-ai-hint={`${product.category}`} src={`https://picsum.photos/seed/${product.id}/100/100`} alt={product.name} width={64} height={64} className="rounded-md object-cover" />
+                                    <div className="flex-grow">
+                                        <h4 className="font-semibold">{product.name}</h4>
+                                        <p className="text-sm text-muted-foreground">{product.price.toFixed(2)} ريال</p>
+                                    </div>
+                                    <Button size="icon" variant="outline" onClick={() => handleAddToCart(product)}>
+                                        <CirclePlus className="h-5 w-5 text-primary" />
+                                    </Button>
+                                </div>
+                            ))}
+                             {filteredProducts.length === 0 && (
+                                <p className="text-center text-muted-foreground py-4">لا توجد منتجات تطابق بحثك.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+             {/* Hidden div for printing */}
+            <div className="hidden">
+                <div id="printable-invoice">
+                    <Invoice cart={cart} total={total} ref={null} />
+                </div>
+            </div>
+        </>
+    );
 }
+
