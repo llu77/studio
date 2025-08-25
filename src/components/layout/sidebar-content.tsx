@@ -69,7 +69,6 @@ export function AppSidebarContent() {
                   asChild
                   isActive={pathname === item.href}
                   tooltip={item.label}
-                  className="font-headline"
                 >
                   <Link href={item.href}>
                       <item.icon className="ms-2" />

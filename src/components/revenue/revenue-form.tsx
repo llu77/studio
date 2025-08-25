@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react";
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, MinusCircle, PlusCircle, Save } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 
@@ -149,7 +148,7 @@ export function RevenueForm() {
                         <Separator />
                         
                         <div>
-                            <h3 className="text-lg font-medium font-headline">توزيع الإيرادات على الموظفين</h3>
+                            <h3 className="text-lg font-medium">توزيع الإيرادات على الموظفين</h3>
                             <div className="mt-4 space-y-4">
                                 {fields.map((field, index) => (
                                     <div key={field.id} className="flex flex-col gap-4 rounded-md border p-4 md:flex-row">
@@ -184,8 +183,8 @@ export function RevenueForm() {
                                 <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
                                     <AlertTriangle size={16} />
                                     <span>
-                                        المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({(typeof totalRevenue === 'number' ? totalRevenue : 0).toFixed(2)} ريال).
-                                        الفرق: {(distributedTotal - (typeof totalRevenue === 'number' ? totalRevenue : 0)).toFixed(2)} ريال
+                                        المجموع الموزع ({distributedTotal.toFixed(2)} ريال) لا يساوي إجمالي الإيرادات ({(typeof totalRevenue === 'number' ? Number(totalRevenue) : 0).toFixed(2)} ريال).
+                                        الفرق: {(distributedTotal - (typeof totalRevenue === 'number' ? Number(totalRevenue) : 0)).toFixed(2)} ريال
                                     </span>
                                 </div>
                             )}

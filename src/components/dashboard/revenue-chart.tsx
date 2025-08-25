@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
@@ -29,7 +30,7 @@ export function RevenueChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">نظرة عامة على الإيرادات</CardTitle>
+        <CardTitle>نظرة عامة على الإيرادات</CardTitle>
         <CardDescription>الإيرادات والمصاريف خلال آخر 6 أشهر</CardDescription>
       </CardHeader>
       <CardContent>

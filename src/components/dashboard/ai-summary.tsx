@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useEffect } from "react";
@@ -18,7 +19,7 @@ const initialState: FormState = {
 function SubmitButton() {
     const { pending } = useFormStatus();
     return (
-      <Button type="submit" disabled={pending} className="w-full font-headline">
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? <Loader2 className="animate-spin" /> : <Wand2 className="mr-2" />}
         {pending ? "جاري الإنشاء..." : "إنشاء ملخص بالذكاء الاصطناعي"}
       </Button>
@@ -42,7 +43,7 @@ export function AiSummary() {
   return (
     <Card className="col-span-1 md:col-span-2 lg:col-span-1">
       <CardHeader>
-        <CardTitle className="font-headline flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
             <Wand2 />
             ملخص مالي بالذكاء الاصطناعي
         </CardTitle>
@@ -80,11 +81,11 @@ export function AiSummary() {
         {state.success && state.data && (
             <div className="mt-6 space-y-4 border-t pt-4">
                 <div>
-                    <h4 className="font-headline font-semibold">الملخص</h4>
+                    <h4 className="font-semibold">الملخص</h4>
                     <p className="text-sm text-muted-foreground">{state.data.summary}</p>
                 </div>
                  <div>
-                    <h4 className="font-headline font-semibold">الرؤى الرئيسية</h4>
+                    <h4 className="font-semibold">الرؤى الرئيسية</h4>
                     <p className="text-sm text-muted-foreground">{state.data.keyInsights}</p>
                 </div>
             </div>

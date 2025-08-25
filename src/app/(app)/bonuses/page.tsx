@@ -4,7 +4,7 @@ import React, { useContext, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { BranchContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';

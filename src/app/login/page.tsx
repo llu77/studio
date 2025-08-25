@@ -55,7 +55,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <CardTitle className="font-headline text-3xl">مرحباً بعودتك</CardTitle>
+          <CardTitle className="text-3xl font-bold">مرحباً بعودتك</CardTitle>
           <CardDescription>
             سجل الدخول إلى حسابك في BranchFlow
           </CardDescription>
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 disabled={loading}
                 />
             </div>
-            <Button type="submit" className="w-full font-headline text-lg" size="lg" disabled={loading}>
+            <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </Button>
           </form>

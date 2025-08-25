@@ -9,6 +9,21 @@ import React, { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 
+// --- Data ---
+const initialUsers = [
+    { id: 'USR001', name: 'المدير العام', email: 'admin@branchflow.com', role: 'مدير النظام', branch: 'كافة الفروع' },
+    { id: 'USR002', name: 'أحمد علي', email: 'ahmed@branchflow.com', role: 'موظف', branch: 'فرع لبن' },
+    { id: 'USR003', name: 'يوسف خالد', email: 'youssef@branchflow.com', role: 'مشرف فرع', branch: 'فرع طويق' },
+    { id: 'USR004', name: 'عبدالحي', email: 'abdulhai@branchflow.com', role: 'موظف', branch: 'فرع طويق' },
+    { id: 'USR005', name: 'فاطمة محمد', email: 'fatima@branchflow.com', role: 'موظف', branch: 'فرع لبن' },
+];
+
+export type User = typeof initialUsers[0];
+export type Role = 'مدير النظام' | 'مشرف فرع' | 'موظف';
+export type Branch = 'كافة الفروع' | 'فرع لبن' | 'فرع طويق' | 'غير محدد';
+
+
+// --- Contexts ---
 export const BranchContext = React.createContext<{
   currentBranch: string;
   setCurrentBranch: (branch: string) => void;
@@ -17,11 +32,30 @@ export const BranchContext = React.createContext<{
   setCurrentBranch: () => {},
 });
 
+export const UserContext = React.createContext<{
+    users: User[];
+    addUser: (user: User) => void;
+    deleteUser: (userId: string) => void;
+}>({
+    users: [],
+    addUser: () => {},
+    deleteUser: () => {},
+});
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [currentBranch, setCurrentBranch] = useState('laban');
+  const [users, setUsers] = useState<User[]>(initialUsers);
+
+  const addUser = (user: User) => {
+    setUsers(prevUsers => [user, ...prevUsers]);
+  };
+
+  const deleteUser = (userId: string) => {
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -42,16 +76,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <BranchContext.Provider value={{ currentBranch, setCurrentBranch }}>
-        <SidebarProvider>
-            <AppSidebarContent />
-            <SidebarInset>
-                <Header />
-                <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                    {children}
-                </main>
-            </SidebarInset>
-        </SidebarProvider>
-    </BranchContext.Provider>
+    <UserContext.Provider value={{ users, addUser, deleteUser }}>
+        <BranchContext.Provider value={{ currentBranch, setCurrentBranch }}>
+            <SidebarProvider>
+                <AppSidebarContent />
+                <SidebarInset>
+                    <Header />
+                    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+                        {children}
+                    </main>
+                </SidebarInset>
+            </SidebarProvider>
+        </BranchContext.Provider>
+    </UserContext.Provider>
   );
 }

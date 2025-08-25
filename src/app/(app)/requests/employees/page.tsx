@@ -1,9 +1,7 @@
 
 'use client';
-import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,14 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Clock, CirclePlus, ListOrdered } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { UserContext } from "@/app/(app)/layout";
 
 const initialRequests = [
-    { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي (لبن)', type: 'سلفة', details: '500 ريال', status: 'approved' },
-    { id: 'REQ002', date: '2024-07-20', employee: 'يوسف خالد (طويق)', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
-    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي (طويق)', type: 'سلفة', details: '300 ريال', status: 'rejected' },
-    { id: 'REQ004', date: '2024-07-18', employee: 'فاطمة محمد (لبن)', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
+    { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
+    { id: 'REQ002', date: '2024-07-20', employee: 'يوسف خالد', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
+    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeBranch: 'فرع طويق', type: 'سلفة', details: '300 ريال', status: 'rejected' },
+    { id: 'REQ004', date: '2024-07-18', employee: 'فاطمة محمد', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
 ];
 
 type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -28,6 +27,7 @@ type EmployeeRequest = {
     id: string;
     date: string;
     employee: string;
+    employeeBranch: string;
     type: string;
     details: string;
     status: RequestStatus;
@@ -42,16 +42,17 @@ const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" 
 
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
+    const { users } = useContext(UserContext);
     const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
     
     // State for the new request form
-    const [employee, setEmployee] = useState('');
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!employee || !requestType || !requestDetails) {
+        if (!selectedEmployeeId || !requestType || !requestDetails) {
             toast({
                 variant: "destructive",
                 title: "خطأ",
@@ -60,10 +61,22 @@ export default function EmployeeRequestsPage() {
             return;
         }
 
+        const employeeDetails = users.find(u => u.id === selectedEmployeeId);
+        if(!employeeDetails) {
+             toast({
+                variant: "destructive",
+                title: "خطأ",
+                description: "لم يتم العثور على الموظف المحدد.",
+            });
+            return;
+        }
+
+
         const newRequest: EmployeeRequest = {
             id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
             date: new Date().toISOString().split('T')[0],
-            employee,
+            employee: employeeDetails.name,
+            employeeBranch: employeeDetails.branch,
             type: requestType,
             details: requestDetails,
             status: 'pending',
@@ -72,7 +85,7 @@ export default function EmployeeRequestsPage() {
         setRequests([newRequest, ...requests]);
 
         // Reset form
-        setEmployee('');
+        setSelectedEmployeeId('');
         setRequestType('');
         setRequestDetails('');
 
@@ -119,15 +132,14 @@ export default function EmployeeRequestsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="employee-name">اسم الموظف</Label>
-                                <Select value={employee} onValueChange={setEmployee}>
+                                <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="اختر الموظف" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="أحمد علي (لبن)">أحمد علي (لبن)</SelectItem>
-                                        <SelectItem value="يوسف خالد (طويق)">يوسف خالد (طويق)</SelectItem>
-                                        <SelectItem value="عبدالحي (طويق)">عبدالحي (طويق)</SelectItem>
-                                        <SelectItem value="فاطمة محمد (لبن)">فاطمة محمد (لبن)</SelectItem>
+                                        {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -187,18 +199,18 @@ export default function EmployeeRequestsPage() {
                             return (
                                 <TableRow key={req.id}>
                                     <TableCell>{req.date}</TableCell>
-                                    <TableCell>{req.employee}</TableCell>
+                                    <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
                                     <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
                                     <TableCell>{req.details}</TableCell>
                                     <TableCell>
-                                        <Badge variant={statusInfo.variant}>
-                                            <StatusIcon className="mr-1 h-3 w-3" />
+                                        <Badge variant={statusInfo.variant} className="gap-1">
+                                            <StatusIcon className="h-3 w-3" />
                                             {statusInfo.text}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-left">
                                         {req.status === 'pending' && (
-                                            <div className="flex gap-2 justify-end">
+                                            <div className="flex gap-1 justify-end">
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
