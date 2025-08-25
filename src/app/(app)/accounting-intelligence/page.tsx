@@ -201,7 +201,7 @@ export default function AccountingIntelligencePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="flex-1 p-8 flex items-center justify-center">
         <div className="text-white text-xl">جاري التحليل الذكي...</div>
       </div>
     )
