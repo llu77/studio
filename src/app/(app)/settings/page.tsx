@@ -9,8 +9,19 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Utensils, Percent, Bell } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
+  const { toast } = useToast();
+
+  const handleSave = () => {
+    toast({
+        title: "تم حفظ الإعدادات",
+        description: "تم تحديث إعدادات النظام بنجاح.",
+        className: "bg-primary text-primary-foreground",
+    });
+  };
+
   return (
     <>
       <Tabs defaultValue="branches" className="w-full">
@@ -113,7 +124,7 @@ export default function SettingsPage() {
         </TabsContent>
 
          <div className="mt-6 flex justify-end">
-            <Button size="lg">حفظ الإعدادات</Button>
+            <Button size="lg" onClick={handleSave}>حفظ الإعدادات</Button>
         </div>
       </Tabs>
     </>

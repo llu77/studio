@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CirclePlus, Printer, Trash2, MinusCircle, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React, { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const products = [
     { id: 'PROD01', name: 'قهوة مختصة', price: 15.00 },
@@ -25,6 +26,7 @@ type CartItem = {
 export default function ProductRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<string>("");
+    const { toast } = useToast();
 
     const handleAddProduct = () => {
         if (!selectedProduct) return;
@@ -44,6 +46,25 @@ export default function ProductRequestsPage() {
     };
     
     const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+
+    const handlePrintInvoice = () => {
+        toast({
+            title: "جاري طباعة الفاتورة...",
+            description: `إجمالي الفاتورة: ${(total * 1.15).toFixed(2)} ريال`,
+        });
+        // Here you would typically trigger a print action
+        // For now, we just clear the cart
+        setCart([]);
+    };
+
+    const handleCancelInvoice = () => {
+        setCart([]);
+        toast({
+            variant: "destructive",
+            title: "تم إلغاء الفاتورة",
+            description: "تم مسح جميع المنتجات من السلة.",
+        });
+    }
 
   return (
     <>
@@ -126,11 +147,11 @@ export default function ProductRequestsPage() {
                         <span>{(total * 1.15).toFixed(2)} ريال</span>
                     </div>
                      <div className="space-y-2">
-                        <Button size="lg" className="w-full" disabled={cart.length === 0}>
+                        <Button size="lg" className="w-full" disabled={cart.length === 0} onClick={handlePrintInvoice}>
                             <Printer className="mr-2 h-4 w-4" />
                             طباعة الفاتورة
                         </Button>
-                        <Button variant="outline" className="w-full" disabled={cart.length === 0} onClick={() => setCart([])}>
+                        <Button variant="outline" className="w-full" disabled={cart.length === 0} onClick={handleCancelInvoice}>
                            إلغاء الفاتورة
                         </Button>
                     </div>

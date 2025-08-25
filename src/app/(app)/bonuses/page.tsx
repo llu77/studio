@@ -8,6 +8,7 @@ import { TrendingUp, Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from 
 import { BranchContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
+import { useToast } from "@/hooks/use-toast";
 
 // --- Data ---
 const branchData = {
@@ -41,6 +42,7 @@ const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 
 export default function BonusesPage() {
   const { currentBranch } = useContext(BranchContext);
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 for Week 1, 1 for Week 2, etc.
+  const { toast } = useToast();
   
   const data = branchData[currentBranch as keyof typeof branchData] || branchData.laban;
 
@@ -71,6 +73,15 @@ export default function BonusesPage() {
   }, [data.employees]);
 
   const selectedWeekTotalBonus = weeklyCalculations.reduce((sum, item) => sum + item.currentBonus, 0);
+  const grandTotalBonus = totalCalculations.reduce((sum, item) => sum + item.totalBonus, 0);
+
+  const handleApproveBonus = () => {
+    toast({
+        title: "تم اعتماد البونص بنجاح!",
+        description: `سيتم صرف مبلغ ${grandTotalBonus.toLocaleString('ar-SA')} ريال للموظفين.`,
+        className: "bg-primary text-primary-foreground",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -131,7 +142,7 @@ export default function BonusesPage() {
                               <TableCell>{emp.currentRevenue.toLocaleString('ar-SA')} ريال</TableCell>
                               <TableCell className={`flex items-center gap-2 font-semibold ${emp.color}`}>
                                   {emp.icon}
-                                  {emp.currentBonus > 0 ? `${emp.currentBonus} ريال` : 'لا يوجد'}
+                                  {emp.currentBonus > 0 ? `${getBonusTier(emp.currentRevenue).level}` : 'لا يوجد'}
                               </TableCell>
                               <TableCell className="font-bold text-primary text-lg">
                                 {emp.currentBonus.toLocaleString('ar-SA')} ريال
@@ -176,7 +187,7 @@ export default function BonusesPage() {
                   </TableBody>
               </Table>
                <div className="flex justify-end mt-6">
-                  <Button size="lg">
+                  <Button size="lg" onClick={handleApproveBonus}>
                       <DollarSign className="mr-2 h-4 w-4" />
                       اعتماد وصرف بونص الشهر
                   </Button>
@@ -186,5 +197,3 @@ export default function BonusesPage() {
     </div>
   );
 }
-
-    

@@ -11,6 +11,8 @@ import { CirclePlus, FilePenLine, Trash2, Search, ListOrdered } from "lucide-rea
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import React, { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 
 const mockUsers = [
@@ -21,7 +23,35 @@ const mockUsers = [
     { id: 'USR005', name: 'فاطمة محمد', email: 'fatima@branchflow.com', role: 'موظف', branch: 'فرع لبن' },
 ];
 
+type User = typeof mockUsers[0];
+
 export default function UsersPage() {
+    const { toast } = useToast();
+
+    const handleSaveUser = (e: React.FormEvent) => {
+        e.preventDefault();
+        toast({
+            title: "تم حفظ المستخدم بنجاح",
+            description: "سيتم إرسال دعوة للمستخدم الجديد عبر البريد الإلكتروني.",
+            className: "bg-primary text-primary-foreground",
+        });
+    };
+
+    const handleDeleteUser = (user: User) => {
+        toast({
+            variant: "destructive",
+            title: "تم حذف المستخدم",
+            description: `تم حذف المستخدم ${user.name} من النظام.`,
+        });
+    };
+
+    const handleEditUser = (user: User) => {
+        toast({
+            title: "غير متاح حالياً",
+            description: `ميزة تعديل المستخدم ${user.name} سيتم إضافتها قريباً.`,
+        });
+    };
+
   return (
     <>
       <Tabs defaultValue="view-users" className="w-full">
@@ -42,52 +72,54 @@ export default function UsersPage() {
                 <CardTitle>إضافة مستخدم جديد</CardTitle>
                 <CardDescription>أدخل بيانات المستخدم الجديد وحدد صلاحياته.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="user-name">الاسم الكامل</Label>
-                            <Input id="user-name" placeholder="مثال: خالد محمد" />
+                <CardContent>
+                    <form onSubmit={handleSaveUser} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="user-name">الاسم الكامل</Label>
+                                <Input id="user-name" placeholder="مثال: خالد محمد" required />
+                            </div>
+                            <div>
+                                <Label htmlFor="user-email">البريد الإلكتروني</Label>
+                                <Input id="user-email" type="email" placeholder="user@example.com" required />
+                            </div>
                         </div>
-                         <div>
-                            <Label htmlFor="user-email">البريد الإلكتروني</Label>
-                            <Input id="user-email" type="email" placeholder="user@example.com" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="user-password">كلمة المرور</Label>
+                                <Input id="user-password" type="password" required />
+                            </div>
+                            <div>
+                                <Label htmlFor="user-role">الصلاحية</Label>
+                                <Select required>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="اختر الصلاحية" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="admin">مدير النظام</SelectItem>
+                                        <SelectItem value="supervisor">مشرف فرع</SelectItem>
+                                        <SelectItem value="employee">موظف</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="user-password">كلمة المرور</Label>
-                            <Input id="user-password" type="password" />
-                        </div>
-                        <div>
-                            <Label htmlFor="user-role">الصلاحية</Label>
-                            <Select>
+                            <Label htmlFor="user-branch">الفرع التابع له</Label>
+                            <Select required>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="اختر الصلاحية" />
+                                    <SelectValue placeholder="اختر الفرع" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="admin">مدير النظام</SelectItem>
-                                    <SelectItem value="supervisor">مشرف فرع</SelectItem>
-                                    <SelectItem value="employee">موظف</SelectItem>
+                                    <SelectItem value="all">كافة الفروع (للمدراء)</SelectItem>
+                                    <SelectItem value="laban">فرع لبن</SelectItem>
+                                    <SelectItem value="tuwaiq">فرع طويق</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                     <div>
-                        <Label htmlFor="user-branch">الفرع التابع له</Label>
-                        <Select>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">كافة الفروع (للمدراء)</SelectItem>
-                                <SelectItem value="laban">فرع لبن</SelectItem>
-                                <SelectItem value="tuwaiq">فرع طويق</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="flex justify-end">
-                        <Button size="lg">حفظ المستخدم</Button>
-                    </div>
+                        <div className="flex justify-end">
+                            <Button type="submit" size="lg">حفظ المستخدم</Button>
+                        </div>
+                    </form>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -129,13 +161,13 @@ export default function UsersPage() {
                                         <div className="flex gap-2">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon"><FilePenLine className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}><FilePenLine className="h-4 w-4" /></Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>تعديل</p></TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteUser(user)}><Trash2 className="h-4 w-4" /></Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>حذف</p></TooltipContent>
                                             </Tooltip>

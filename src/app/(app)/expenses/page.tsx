@@ -29,13 +29,15 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
 
+  // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [branch, setBranch] = useState('');
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const { toast } = useToast();
+  
 
   const handleSaveExpense = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +82,29 @@ export default function ExpensesPage() {
     } else {
         const results = expenses.filter(expense => 
             expense.description.toLowerCase().includes(term.toLowerCase()) ||
-            expense.category.toLowerCase().includes(term.toLowerCase())
+            expense.category.toLowerCase().includes(term.toLowerCase()) ||
+            expense.branch.toLowerCase().includes(term.toLowerCase())
         );
         setFilteredExpenses(results);
     }
+  }
+
+  const handleDelete = (id: string) => {
+    const updated = expenses.filter(exp => exp.id !== id);
+    setExpenses(updated);
+    setFilteredExpenses(updated);
+    toast({
+        variant: "destructive",
+        title: "تم الحذف",
+        description: `تم حذف المصروف رقم ${id} من السجل.`,
+    });
+  }
+
+  const handleEdit = (id: string) => {
+    toast({
+        title: "غير متاح حالياً",
+        description: `ميزة تعديل المصروف ${id} سيتم إضافتها قريباً.`,
+    });
   }
 
 
@@ -170,7 +191,7 @@ export default function ExpensesPage() {
                         </div>
                         <div className="relative w-full md:w-1/3">
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="ابحث بالوصف أو البند..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
+                            <Input placeholder="ابحث بالوصف أو البند أو الفرع..." className="pr-10" value={searchTerm} onChange={e => handleSearch(e.target.value)}/>
                         </div>
                     </div>
                 </CardHeader>
@@ -206,13 +227,13 @@ export default function ExpensesPage() {
                                             <div className="flex gap-2">
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon"><FilePenLine className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(expense.id)}><FilePenLine className="h-4 w-4" /></Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent><p>تعديل</p></TooltipContent>
                                                 </Tooltip>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(expense.id)}><Trash2 className="h-4 w-4" /></Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent><p>حذف</p></TooltipContent>
                                                 </Tooltip>
