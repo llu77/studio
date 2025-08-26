@@ -253,6 +253,54 @@ export interface TrendAnalysis {
   forecast: number
 }
 
+// تنبؤ الإيرادات باستخدام الانحدار الخطي البسيط
+export function forecastRevenue(historicalData: number[]): {
+  nextPeriod: number
+  trend: 'increasing' | 'decreasing' | 'stable'
+  confidence: number
+} {
+    if (historicalData.length < 2) {
+        return {
+            nextPeriod: historicalData[0] || 0,
+            trend: 'stable',
+            confidence: 0
+        };
+    }
+  const n = historicalData.length
+  const x = Array.from({ length: n }, (_, i) => i + 1)
+  const y = historicalData
+  
+  // حساب معاملات الانحدار الخطي
+  const sumX = x.reduce((a, b) => a + b, 0)
+  const sumY = y.reduce((a, b) => a + b, 0)
+  const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0)
+  const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0)
+  
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
+  const intercept = (sumY - slope * sumX) / n
+  
+  // التنبؤ للفترة التالية
+  const nextPeriod = slope * (n + 1) + intercept
+  
+  // تحديد الاتجاه
+  const trend = slope > 0.01 ? 'increasing' : slope < -0.01 ? 'decreasing' : 'stable'
+  
+  // حساب معامل الثقة (R²)
+  const yMean = sumY / n
+  const totalSS = y.reduce((sum, yi) => sum + Math.pow(yi - yMean, 2), 0)
+  const residualSS = y.reduce((sum, yi, i) => {
+    const predicted = slope * x[i] + intercept
+    return sum + Math.pow(yi - predicted, 2)
+  }, 0)
+  const confidence = totalSS > 0 ? 1 - (residualSS / totalSS) : 1;
+  
+  return {
+    nextPeriod: Math.max(0, nextPeriod),
+    trend,
+    confidence: Math.min(1, Math.max(0, confidence))
+  }
+}
+
 export function analyzeTrend(values: number[]): TrendAnalysis {
   if (values.length < 2) {
     return {

@@ -1,5 +1,6 @@
 // نظام الذكاء المحاسبي المتقدم
-import crypto from 'crypto'
+import { analyzeTrend, calculateFinancialRatios, calculateNetSalary, checkWarningIndicators, forecastRevenue } from './financial-calculations';
+
 
 // ============= كشف الاحتيال =============
 
@@ -520,77 +521,29 @@ export function predictFinancialMetric(
   historicalData: number[],
   weights?: number[]
 ): FinancialPrediction {
-  if (historicalData.length < 3) {
-    return {
-      nextPeriod: historicalData[historicalData.length - 1] || 0,
-      confidence: 0,
-      trend: 'stable',
-      seasonalFactor: 1,
-      riskFactors: ['بيانات تاريخية غير كافية']
-    }
-  }
-  
-  // أوزان افتراضية (الأحدث أكثر أهمية)
-  if (!weights) {
-    weights = []
-    for (let i = 0; i < historicalData.length; i++) {
-      weights.push(Math.exp(-i * 0.3))
-    }
-  }
-  
-  // تطبيع الأوزان
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-  const normalizedWeights = weights.map(w => w / totalWeight)
-  
-  // حساب المتوسط المرجح
-  let prediction = 0
-  for (let i = 0; i < historicalData.length; i++) {
-    prediction += historicalData[historicalData.length - 1 - i] * normalizedWeights[i]
-  }
-  
-  // تحديد الاتجاه
-  const recentAvg = historicalData.slice(-3).reduce((sum, val) => sum + val, 0) / 3
-  const olderAvg = historicalData.slice(-6, -3).reduce((sum, val) => sum + val, 0) / 3
-  
-  let trend: 'increasing' | 'decreasing' | 'stable'
-  if (recentAvg > olderAvg * 1.05) {
-    trend = 'increasing'
-  } else if (recentAvg < olderAvg * 0.95) {
-    trend = 'decreasing'
-  } else {
-    trend = 'stable'
-  }
-  
-  // حساب العامل الموسمي
-  const seasonalFactor = historicalData.length >= 12 
-    ? historicalData[historicalData.length - 12] / olderAvg 
+    const forecast = forecastRevenue(historicalData);
+    const trendAnalysis = analyzeTrend(historicalData);
+
+    const seasonalFactor = historicalData.length >= 12 
+    ? historicalData[historicalData.length - 12] / (historicalData.slice(0, -1).reduce((s,v) => s+v, 0)/ (historicalData.length-1))
     : 1
   
   // تحديد عوامل الخطر
   const riskFactors: string[] = []
-  const volatility = Math.sqrt(
-    historicalData.reduce((sum, val) => sum + Math.pow(val - recentAvg, 2), 0) / historicalData.length
-  )
-  
-  if (volatility > recentAvg * 0.3) {
+  if (trendAnalysis.volatility > (historicalData.reduce((s,v)=>s+v,0)/historicalData.length) * 0.3) {
     riskFactors.push('تذبذب عالي في البيانات')
   }
-  
-  if (trend === 'decreasing' && prediction < recentAvg * 0.8) {
+  if (forecast.trend === 'decreasing' && forecast.nextPeriod < (historicalData.slice(-3).reduce((s,v)=>s+v,0)/3) * 0.8) {
     riskFactors.push('انخفاض متسارع متوقع')
   }
-  
   if (Math.abs(seasonalFactor - 1) > 0.2) {
     riskFactors.push('تأثير موسمي قوي')
   }
   
-  // حساب مستوى الثقة
-  const confidence = Math.max(0, Math.min(100, 100 - volatility / recentAvg * 100))
-  
   return {
-    nextPeriod: Math.round(prediction * 100) / 100,
-    confidence: Math.round(confidence),
-    trend,
+    nextPeriod: forecast.nextPeriod,
+    confidence: Math.round(forecast.confidence * 100),
+    trend: forecast.trend,
     seasonalFactor: Math.round(seasonalFactor * 100) / 100,
     riskFactors
   }
@@ -789,310 +742,4 @@ export function generateIntelligentRecommendations(
   recommendations.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
   
   return recommendations
-}
-
-
-
-// ملف المعادلات والخوارزميات الحسابية المحسنة
-
-// معادلات الرواتب
-export interface SalaryCalculation {
-  basicSalary: number
-  overtime: number
-  overtimeRate: number
-  deductions: {
-    tax: number
-    insurance: number
-    loans: number
-    absences: number
-    other: number
-  }
-  allowances: {
-    housing: number
-    transportation: number
-    food: number
-    phone: number
-    other: number
-  }
-  bonuses: {
-    performance: number
-    annual: number
-    special: number
-  }
-}
-
-// حساب الضريبة التصاعدية (حسب النظام السعودي)
-export function calculateProgressiveTax(salary: number): number {
-  const taxBrackets = [
-    { min: 0, max: 5000, rate: 0 },
-    { min: 5000, max: 10000, rate: 0.05 },
-    { min: 10000, max: 20000, rate: 0.10 },
-    { min: 20000, max: 50000, rate: 0.15 },
-    { min: 50000, max: Infinity, rate: 0.20 }
-  ]
-
-  let tax = 0
-  for (const bracket of taxBrackets) {
-    if (salary > bracket.min) {
-      const taxableAmount = Math.min(salary - bracket.min, bracket.max - bracket.min)
-      tax += taxableAmount * bracket.rate
-    }
-  }
-  return tax
-}
-
-// حساب التأمينات الاجتماعية (GOSI)
-export function calculateSocialInsurance(salary: number, isLocal: boolean = true): number {
-  const localRate = 0.10 // 10% للمواطنين
-  const expatRate = 0.02 // 2% للوافدين
-  const maxInsurableSalary = 45000 // الحد الأقصى للراتب الخاضع للتأمين
-  
-  const insuredSalary = Math.min(salary, maxInsurableSalary)
-  return insuredSalary * (isLocal ? localRate : expatRate)
-}
-
-// حساب ساعات العمل الإضافي
-export function calculateOvertime(
-  hoursWorked: number,
-  hourlyRate: number,
-  overtimeMultiplier: number = 1.5
-): number {
-  const standardHours = 8 * 22 // 8 ساعات × 22 يوم عمل
-  const overtimeHours = Math.max(0, hoursWorked - standardHours)
-  return overtimeHours * hourlyRate * overtimeMultiplier
-}
-
-// حساب الخصومات للغياب
-export function calculateAbsenceDeduction(
-  dailySalary: number,
-  absenceDays: number,
-  deductionRate: number = 1
-): number {
-  return dailySalary * absenceDays * deductionRate
-}
-
-// حساب البدلات كنسبة من الراتب الأساسي
-export function calculateAllowances(basicSalary: number): {
-  housing: number
-  transportation: number
-  food: number
-} {
-  return {
-    housing: basicSalary * 0.25, // 25% بدل سكن
-    transportation: basicSalary * 0.10, // 10% بدل مواصلات
-    food: basicSalary * 0.05 // 5% بدل غذاء
-  }
-}
-
-// حساب المكافآت بناءً على الأداء
-export function calculatePerformanceBonus(
-  basicSalary: number,
-  performanceScore: number // من 0 إلى 100
-): number {
-  const bonusPercentage = performanceScore / 100 * 0.30 // حتى 30% من الراتب
-  return basicSalary * bonusPercentage
-}
-
-// حساب الراتب الصافي الشامل
-export function calculateNetSalary(calc: SalaryCalculation): {
-  grossSalary: number
-  totalDeductions: number
-  totalAllowances: number
-  totalBonuses: number
-  netSalary: number
-  breakdown: any
-} {
-  // حساب إجمالي البدلات
-  const totalAllowances = Object.values(calc.allowances).reduce((sum, val) => sum + val, 0)
-  
-  // حساب إجمالي المكافآت
-  const totalBonuses = Object.values(calc.bonuses).reduce((sum, val) => sum + val, 0)
-  
-  // حساب ساعات العمل الإضافي
-  const overtimeAmount = calc.overtime * calc.overtimeRate
-  
-  // الراتب الإجمالي
-  const grossSalary = calc.basicSalary + totalAllowances + totalBonuses + overtimeAmount
-  
-  // حساب الضريبة على الراتب الإجمالي
-  const taxAmount = calculateProgressiveTax(grossSalary)
-  
-  // إجمالي الخصومات
-  const totalDeductions = 
-    taxAmount +
-    calc.deductions.insurance +
-    calc.deductions.loans +
-    calc.deductions.absences +
-    calc.deductions.other
-  
-  // الراتب الصافي
-  const netSalary = grossSalary - totalDeductions
-  
-  return {
-    grossSalary,
-    totalDeductions,
-    totalAllowances,
-    totalBonuses,
-    netSalary,
-    breakdown: {
-      basic: calc.basicSalary,
-      overtime: overtimeAmount,
-      allowances: calc.allowances,
-      bonuses: calc.bonuses,
-      deductions: {
-        ...calc.deductions,
-        tax: taxAmount
-      }
-    }
-  }
-}
-
-// حسابات الإحصائيات المالية
-export interface FinancialStats {
-  revenues: number[]
-  expenses: number[]
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly'
-}
-
-// حساب معدل النمو
-export function calculateGrowthRate(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return newValue > 0 ? 100 : 0
-  return ((newValue - oldValue) / oldValue) * 100
-}
-
-// حساب المتوسط المتحرك
-export function calculateMovingAverage(values: number[], period: number): number[] {
-  const result: number[] = []
-  for (let i = period - 1; i < values.length; i++) {
-    const sum = values.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0)
-    result.push(sum / period)
-  }
-  return result
-}
-
-// حساب الانحراف المعياري
-export function calculateStandardDeviation(values: number[]): number {
-  const mean = values.reduce((sum, val) => sum + val, 0) / values.length
-  const squaredDifferences = values.map(val => Math.pow(val - mean, 2))
-  const variance = squaredDifferences.reduce((sum, val) => sum + val, 0) / values.length
-  return Math.sqrt(variance)
-}
-
-// تنبؤ الإيرادات باستخدام الانحدار الخطي البسيط
-export function forecastRevenue(historicalData: number[]): {
-  nextPeriod: number
-  trend: 'increasing' | 'decreasing' | 'stable'
-  confidence: number
-} {
-  const n = historicalData.length
-  const x = Array.from({ length: n }, (_, i) => i + 1)
-  const y = historicalData
-  
-  // حساب معاملات الانحدار الخطي
-  const sumX = x.reduce((a, b) => a + b, 0)
-  const sumY = y.reduce((a, b) => a + b, 0)
-  const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0)
-  const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0)
-  
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-  const intercept = (sumY - slope * sumX) / n
-  
-  // التنبؤ للفترة التالية
-  const nextPeriod = slope * (n + 1) + intercept
-  
-  // تحديد الاتجاه
-  const trend = slope > 0.01 ? 'increasing' : slope < -0.01 ? 'decreasing' : 'stable'
-  
-  // حساب معامل الثقة (R²)
-  const yMean = sumY / n
-  const totalSS = y.reduce((sum, yi) => sum + Math.pow(yi - yMean, 2), 0)
-  const residualSS = y.reduce((sum, yi, i) => {
-    const predicted = slope * x[i] + intercept
-    return sum + Math.pow(yi - predicted, 2)
-  }, 0)
-  const confidence = 1 - (residualSS / totalSS)
-  
-  return {
-    nextPeriod: Math.max(0, nextPeriod),
-    trend,
-    confidence: Math.min(1, Math.max(0, confidence))
-  }
-}
-
-// حساب نسبة الربحية
-export function calculateProfitMargin(revenue: number, expenses: number): number {
-  if (revenue === 0) return 0
-  return ((revenue - expenses) / revenue) * 100
-}
-
-// حساب العائد على الاستثمار (ROI)
-export function calculateROI(gain: number, cost: number): number {
-  if (cost === 0) return 0
-  return ((gain - cost) / cost) * 100
-}
-
-// حساب نقطة التعادل
-export function calculateBreakEvenPoint(
-  fixedCosts: number,
-  pricePerUnit: number,
-  variableCostPerUnit: number
-): number {
-  const contributionMargin = pricePerUnit - variableCostPerUnit
-  if (contributionMargin <= 0) return Infinity
-  return fixedCosts / contributionMargin
-}
-
-// تحليل التدفق النقدي
-export function analyzeCashFlow(
-  inflows: number[],
-  outflows: number[]
-): {
-  netCashFlow: number
-  cumulativeCashFlow: number[]
-  cashFlowTrend: 'positive' | 'negative' | 'neutral'
-  liquidityRatio: number
-} {
-  const netFlows = inflows.map((inflow, i) => inflow - (outflows[i] || 0))
-  const netCashFlow = netFlows.reduce((sum, flow) => sum + flow, 0)
-  
-  const cumulativeCashFlow: number[] = []
-  let cumulative = 0
-  for (const flow of netFlows) {
-    cumulative += flow
-    cumulativeCashFlow.push(cumulative)
-  }
-  
-  const trend = netCashFlow > 0 ? 'positive' : netCashFlow < 0 ? 'negative' : 'neutral'
-  
-  const totalInflows = inflows.reduce((sum, val) => sum + val, 0)
-  const totalOutflows = outflows.reduce((sum, val) => sum + val, 0)
-  const liquidityRatio = totalOutflows > 0 ? totalInflows / totalOutflows : 1
-  
-  return {
-    netCashFlow,
-    cumulativeCashFlow,
-    cashFlowTrend: trend,
-    liquidityRatio
-  }
-}
-
-// حساب مؤشرات الأداء الرئيسية (KPIs)
-export function calculateKPIs(data: {
-  revenue: number
-  expenses: number
-  employees: number
-  customers: number
-  products: number
-}): {
-  revenuePerEmployee: number
-  revenuePerCustomer: number
-  expenseRatio: number
-  productivityIndex: number
-} {
-  return {
-    revenuePerEmployee: data.employees > 0 ? data.revenue / data.employees : 0,
-    revenuePerCustomer: data.customers > 0 ? data.revenue / data.customers : 0,
-    expenseRatio: data.revenue > 0 ? (data.expenses / data.revenue) * 100 : 0,
-    productivityIndex: data.employees > 0 ? (data.revenue - data.expenses) / data.employees : 0
-  }
 }
