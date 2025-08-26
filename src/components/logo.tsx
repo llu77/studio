@@ -4,8 +4,8 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 50"
-      width="140"
+      viewBox="0 0 250 50"
+      width="180"
       height="40"
       {...props}
     >
@@ -21,7 +21,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         fontWeight="600"
         fill="hsl(var(--foreground))"
       >
-        BranchFlow
+        BranchFlow LOW
       </text>
     </svg>
   );
