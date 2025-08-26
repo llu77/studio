@@ -14,15 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
-
-const initialExpenses = [
-    { id: 'EXP001', date: '2024-07-21', branch: 'فرع لبن', category: 'فواتير', amount: 450.00, description: 'فاتورة كهرباء شهر يوليو' },
-    { id: 'EXP002', date: '2024-07-20', branch: 'فرع طويق', category: 'صيانة', amount: 1200.00, description: 'إصلاح مكيف الهواء' },
-    { id: 'EXP003', date: '2024-07-20', branch: 'فرع لبن', category: 'مستلزمات', amount: 250.50, description: 'شراء أدوات نظافة' },
-    { id: 'EXP004', date: '2024-07-19', branch: 'فرع طويق', category: 'رواتب', amount: 8500.00, description: 'رواتب الموظفين' },
-];
-
-type Expense = typeof initialExpenses[0];
+export type Expense = {
+    id: string;
+    date: string;
+    branch: string;
+    category: string;
+    amount: number;
+    description: string;
+};
 
 const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => (
     <div className="p-8">
@@ -56,9 +55,8 @@ const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => (
 );
 
 
-export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(initialExpenses);
+export default function ExpensesPage({ expenses, addExpense, deleteExpense }: { expenses: Expense[], addExpense: (expense: Omit<Expense, 'id'>) => void, deleteExpense: (id: string) => void }) {
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(expenses);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const printRef = React.useRef(null);
@@ -70,6 +68,10 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   
+  React.useEffect(() => {
+    setFilteredExpenses(expenses);
+  }, [expenses]);
+
 
   const handleSaveExpense = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,17 +83,14 @@ export default function ExpensesPage() {
         });
         return;
     }
-    const newExpense: Expense = {
-        id: `EXP${String(expenses.length + 1).padStart(3, '0')}`,
+    const newExpense: Omit<Expense, 'id'> = {
         date,
         branch: branch === 'laban' ? 'فرع لبن' : 'فرع طويق',
         category,
         amount: parseFloat(amount),
         description,
     };
-    const updatedExpenses = [newExpense, ...expenses];
-    setExpenses(updatedExpenses);
-    setFilteredExpenses(updatedExpenses);
+    addExpense(newExpense);
 
     // Reset form
     setDate(new Date().toISOString().split('T')[0]);
@@ -122,9 +121,7 @@ export default function ExpensesPage() {
   }
 
   const handleDelete = (id: string) => {
-    const updated = expenses.filter(exp => exp.id !== id);
-    setExpenses(updated);
-    setFilteredExpenses(updated);
+    deleteExpense(id);
     toast({
         variant: "destructive",
         title: "تم الحذف",
@@ -301,3 +298,5 @@ export default function ExpensesPage() {
     </>
   );
 }
+
+    
