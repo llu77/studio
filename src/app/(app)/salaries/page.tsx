@@ -157,49 +157,49 @@ export default function Salaries() {
   }
 
   return (
-    <div className="flex-1 p-8 space-y-8 text-white">
-        <div className="flex justify-between items-center">
+    <div className="flex-1 space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">الرواتب</h1>
             <p className="text-gray-400">إدارة مسيرات الرواتب والمستحقات</p>
           </div>
           <Button
             onClick={handleBulkPrint}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
           >
             🖨️ طباعة التقرير الشامل
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="bg-gray-800 border-gray-700 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-gray-800 border-gray-700 p-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-2">إجمالي الرواتب</p>
-              <p className="text-3xl font-bold text-green-500">
+              <p className="text-2xl font-bold text-green-500">
                 {formatCurrency(totalSalaries)}
               </p>
             </div>
           </Card>
-           <Card className="bg-gray-800 border-gray-700 p-6">
+           <Card className="bg-gray-800 border-gray-700 p-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-2">الرواتب الأساسية</p>
-              <p className="text-3xl font-bold text-blue-500">
+              <p className="text-2xl font-bold text-blue-500">
                 {formatCurrency(totalBasic)}
               </p>
             </div>
           </Card>
-          <Card className="bg-gray-800 border-gray-700 p-6">
+          <Card className="bg-gray-800 border-gray-700 p-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-2">إجمالي الخصومات</p>
-              <p className="text-3xl font-bold text-red-500">
+              <p className="text-2xl font-bold text-red-500">
                 {formatCurrency(totalDeductions)}
               </p>
             </div>
           </Card>
-          <Card className="bg-gray-800 border-gray-700 p-6">
+          <Card className="bg-gray-800 border-gray-700 p-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-2">إجمالي الحوافز</p>
-              <p className="text-3xl font-bold text-purple-500">
+              <p className="text-2xl font-bold text-purple-500">
                 {formatCurrency(totalBonuses)}
               </p>
             </div>
@@ -207,138 +207,144 @@ export default function Salaries() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1 bg-gray-800 border-gray-700 p-6">
-            <h3 className="text-xl font-semibold mb-4">إضافة مسيرة راتب جديدة</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>الموظف</Label>
-                <Select name="employeeId" value={formData.employeeId} onValueChange={(value) => handleInputChange({ target: { name: 'employeeId', value } } as any)} required>
-                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                        <SelectValue placeholder="اختر الموظف" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-700 text-white">
-                        {employees.map((employee) => (
-                            <SelectItem key={employee.id} value={employee.id}>
-                            {employee.name} - {employee.position}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>التاريخ</Label>
-                <Input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  className="bg-gray-700 border-gray-600"
-                  required
-                />
-              </div>
-              
-               <div>
-                <Label>الراتب الأساسي</Label>
-                <Input
-                  type="number"
-                  name="basicSalary"
-                  value={formData.basicSalary}
-                  onChange={handleInputChange}
-                  className="bg-gray-700 border-gray-600"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div className='flex gap-4'>
+          <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold">إضافة مسيرة راتب جديدة</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label>الخصومات</Label>
-                  <Input
-                    type="number"
-                    name="deductions"
-                    value={formData.deductions}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600"
-                    placeholder="0.00"
-                  />
+                  <Label>الموظف</Label>
+                  <Select name="employeeId" value={formData.employeeId} onValueChange={(value) => handleInputChange({ target: { name: 'employeeId', value } } as any)} required>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                          <SelectValue placeholder="اختر الموظف" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-700 text-white">
+                          {employees.map((employee) => (
+                              <SelectItem key={employee.id} value={employee.id}>
+                              {employee.name} - {employee.position}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
-                  <Label>الحوافز</Label>
+                  <Label>التاريخ</Label>
+                  <Input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    className="bg-gray-700 border-gray-600"
+                    required
+                  />
+                </div>
+                
+                 <div>
+                  <Label>الراتب الأساسي</Label>
                   <Input
                     type="number"
-                    name="bonuses"
-                    value={formData.bonuses}
+                    name="basicSalary"
+                    value={formData.basicSalary}
                     onChange={handleInputChange}
                     className="bg-gray-700 border-gray-600"
                     placeholder="0.00"
+                    required
                   />
                 </div>
-              </div>
 
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">الصافي:</span>
-                  <span className="text-green-400 font-bold text-lg">
-                    {formatCurrency(calculateNetSalary())}
-                  </span>
+                <div className='flex gap-4'>
+                  <div>
+                    <Label>الخصومات</Label>
+                    <Input
+                      type="number"
+                      name="deductions"
+                      value={formData.deductions}
+                      onChange={handleInputChange}
+                      className="bg-gray-700 border-gray-600"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>الحوافز</Label>
+                    <Input
+                      type="number"
+                      name="bonuses"
+                      value={formData.bonuses}
+                      onChange={handleInputChange}
+                      className="bg-gray-700 border-gray-600"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                {submitting ? 'جاري الحفظ...' : 'حفظ مسيرة الراتب'}
-              </Button>
-            </form>
+                <div className="bg-gray-700 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">الصافي:</span>
+                    <span className="text-green-400 font-bold text-lg">
+                      {formatCurrency(calculateNetSalary())}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {submitting ? 'جاري الحفظ...' : 'حفظ مسيرة الراتب'}
+                </Button>
+              </form>
+            </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 bg-gray-800 border-gray-700 p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">مسيرات الرواتب</h3>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-700">
-                    <TableHead className="text-gray-400">التاريخ</TableHead>
-                    <TableHead className="text-gray-400">الموظف</TableHead>
-                    <TableHead className="text-gray-400">الصافي</TableHead>
-                    <TableHead className="text-gray-400">الحالة</TableHead>
-                    <TableHead className="text-gray-400">الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {salaries.map((salary) => (
-                    <TableRow key={salary.id} className="border-gray-700">
-                      <TableCell>{formatDate(salary.date)}</TableCell>
-                      <TableCell>{salary.employeeName}</TableCell>
-                      <TableCell className="text-green-400 font-medium">
-                        {formatCurrency(salary.netSalary)}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(salary.status)}`}>
-                          {getStatusText(salary.status)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          onClick={() => handlePrintSalary(salary)}
-                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                        >
-                          طباعة
-                        </Button>
-                      </TableCell>
+          <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-white">مسيرات الرواتب</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-gray-700">
+                      <TableHead className="text-gray-400">التاريخ</TableHead>
+                      <TableHead className="text-gray-400">الموظف</TableHead>
+                      <TableHead className="text-gray-400">الصافي</TableHead>
+                      <TableHead className="text-gray-400">الحالة</TableHead>
+                      <TableHead className="text-gray-400">الإجراءات</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {salaries.map((salary) => (
+                      <TableRow key={salary.id} className="border-gray-700">
+                        <TableCell>{formatDate(salary.date)}</TableCell>
+                        <TableCell>{salary.employeeName}</TableCell>
+                        <TableCell className="text-green-400 font-medium">
+                          {formatCurrency(salary.netSalary)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(salary.status)}`}>
+                            {getStatusText(salary.status)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => handlePrintSalary(salary)}
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                          >
+                            طباعة
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>
   )
 }
-
-    

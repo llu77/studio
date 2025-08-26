@@ -258,13 +258,13 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex-1 p-8 space-y-8 text-white">
+    <div className="flex-1 space-y-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">إدارة المستخدمين</h1>
           <p className="text-gray-400">إدارة حسابات المستخدمين والصلاحيات</p>
         </div>
 
-        <div className="mb-6 flex gap-4">
+        <div className="mb-6 flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <Input
               type="text"
@@ -274,63 +274,65 @@ export default function AdminUsers() {
               className="bg-gray-800 border-gray-700 text-white"
             />
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 ml-2" />
-                إضافة مستخدم جديد
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-gray-800 text-white max-w-md border-gray-700">
-              <DialogHeader>
-                <DialogTitle className="text-xl">إضافة مستخدم جديد</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddUser} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">الاسم</Label>
-                  <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                </div>
-                <div>
-                  <Label htmlFor="email">البريد الإلكتروني</Label>
-                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                </div>
-                <div>
-                  <Label htmlFor="password">كلمة المرور</Label>
-                  <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                </div>
-                <div>
-                  <Label htmlFor="role">الدور</Label>
-                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
-                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                      <SelectItem value="admin">مدير النظام</SelectItem>
-                      <SelectItem value="manager">مشرف</SelectItem>
-                      <SelectItem value="employee">موظف</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="branch">الفرع</Label>
-                  <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
-                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
-                    <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                      {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="position">المنصب</Label>
-                  <Input id="position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                </div>
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">إضافة المستخدم</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div className='flex gap-2'>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700 w-full">
+                  <Plus className="w-4 h-4 ml-2" />
+                  إضافة مستخدم
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-gray-800 text-white max-w-md border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">إضافة مستخدم جديد</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddUser} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">الاسم</Label>
+                    <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">البريد الإلكتروني</Label>
+                    <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">كلمة المرور</Label>
+                    <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="role">الدور</Label>
+                    <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                        <SelectItem value="admin">مدير النظام</SelectItem>
+                        <SelectItem value="manager">مشرف</SelectItem>
+                        <SelectItem value="employee">موظف</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="branch">الفرع</Label>
+                    <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                      <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                        {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="position">المنصب</Label>
+                    <Input id="position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                  </div>
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">إضافة المستخدم</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
 
-          <Button onClick={() => setIsLogsDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700"><History className="w-4 h-4 ml-2" />سجل التغييرات</Button>
+            <Button onClick={() => setIsLogsDialogOpen(true)} variant="outline"><History className="w-4 h-4 ml-2" />سجل</Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="bg-gray-800 border-gray-700 p-4">
             <p className="text-gray-400 text-sm mb-2 text-center">إجمالي المستخدمين</p>
             <p className="text-3xl font-bold text-white text-center">{users.length}</p>
@@ -345,50 +347,54 @@ export default function AdminUsers() {
           </Card>
         </div>
 
-        <Card className="bg-gray-800 border-gray-700 p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">قائمة المستخدمين</h3>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-gray-700 hover:bg-gray-800">
-                  <TableHead className="text-gray-400">الاسم</TableHead>
-                  <TableHead className="text-gray-400">البريد الإلكتروني</TableHead>
-                  <TableHead className="text-gray-400">الدور</TableHead>
-                  <TableHead className="text-gray-400">الفرع</TableHead>
-                  <TableHead className="text-gray-400">الحالة</TableHead>
-                  <TableHead className="text-gray-400">الصلاحيات</TableHead>
-                  <TableHead className="text-gray-400">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map(user => (
-                  <TableRow key={user.id} className="border-gray-700 hover:bg-gray-700">
-                    <TableCell className="text-white">{user.name}</TableCell>
-                    <TableCell className="text-gray-300">{user.email}</TableCell>
-                    <TableCell><Badge className={getRoleBadgeColor(user.role)}>{getRoleLabel(user.role)}</Badge></TableCell>
-                    <TableCell className="text-gray-300">{user.branch}</TableCell>
-                    <TableCell>
-                      <Button onClick={() => handleToggleStatus(user.id)} className={`h-auto px-2 py-1 text-xs ${user.status === 'active' ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'}`}>
-                        {user.status === 'active' ? 'نشط' : 'غير نشط'}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Button onClick={() => openPermissionsDialog(user)} variant={'ghost'} className="text-blue-500 hover:text-blue-400 flex items-center gap-1 p-1 h-auto">
-                        <Shield className="w-4 h-4" />
-                        {user.permissions.length} صلاحية
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button onClick={() => openEditDialog(user)} variant={'ghost'} size={'icon'} className="text-blue-500 hover:text-blue-400 h-8 w-8" title="تعديل"><Edit className="w-4 h-4" /></Button>
-                        {user.role !== 'admin' && (<Button onClick={() => handleDeleteUser(user.id)} variant={'ghost'} size={'icon'} className="text-red-500 hover:text-red-400 h-8 w-8" title="حذف"><Trash2 className="w-4 h-4" /></Button>)}
-                      </div>
-                    </TableCell>
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-white">قائمة المستخدمين</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-700 hover:bg-gray-800">
+                    <TableHead className="text-gray-400">الاسم</TableHead>
+                    <TableHead className="text-gray-400">البريد الإلكتروني</TableHead>
+                    <TableHead className="text-gray-400">الدور</TableHead>
+                    <TableHead className="text-gray-400">الفرع</TableHead>
+                    <TableHead className="text-gray-400">الحالة</TableHead>
+                    <TableHead className="text-gray-400">الصلاحيات</TableHead>
+                    <TableHead className="text-gray-400">الإجراءات</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map(user => (
+                    <TableRow key={user.id} className="border-gray-700 hover:bg-gray-700">
+                      <TableCell className="text-white">{user.name}</TableCell>
+                      <TableCell className="text-gray-300">{user.email}</TableCell>
+                      <TableCell><Badge className={getRoleBadgeColor(user.role)}>{getRoleLabel(user.role)}</Badge></TableCell>
+                      <TableCell className="text-gray-300">{user.branch}</TableCell>
+                      <TableCell>
+                        <Button onClick={() => handleToggleStatus(user.id)} className={`h-auto px-2 py-1 text-xs ${user.status === 'active' ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'}`}>
+                          {user.status === 'active' ? 'نشط' : 'غير نشط'}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button onClick={() => openPermissionsDialog(user)} variant={'ghost'} className="text-blue-500 hover:text-blue-400 flex items-center gap-1 p-1 h-auto">
+                          <Shield className="w-4 h-4" />
+                          {user.permissions.length} صلاحية
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button onClick={() => openEditDialog(user)} variant={'ghost'} size={'icon'} className="text-blue-500 hover:text-blue-400 h-8 w-8" title="تعديل"><Edit className="w-4 h-4" /></Button>
+                          {user.role !== 'admin' && (<Button onClick={() => handleDeleteUser(user.id)} variant={'ghost'} size={'icon'} className="text-red-500 hover:text-red-400 h-8 w-8" title="حذف"><Trash2 className="w-4 h-4" /></Button>)}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Edit User Dialog */}
@@ -430,7 +436,7 @@ export default function AdminUsers() {
             <DialogContent className="bg-gray-800 text-white max-w-2xl border-gray-700">
                 <DialogHeader><DialogTitle className="text-xl">إدارة صلاحيات: {selectedUser?.name}</DialogTitle></DialogHeader>
                 <div className="space-y-4 max-h-96 overflow-y-auto p-1">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {ALL_PERMISSIONS.map(permission => (
                     <div key={permission.id} className="flex items-start gap-3 rounded-lg border border-gray-700 p-3 bg-gray-900/50">
                         <input type="checkbox" id={`perm-${permission.id}`} checked={formData.permissions.includes(permission.id)} onChange={(e) => {
@@ -444,10 +450,10 @@ export default function AdminUsers() {
                     ))}
                 </div>
                 </div>
-                <DialogFooter className="!justify-between pt-4">
-                    <div>
+                <DialogFooter className="!justify-between pt-4 flex-col sm:flex-row gap-2">
+                    <div className='flex gap-2'>
                         <Button onClick={() => setFormData(prev => ({...prev, permissions: []}))} variant="destructive">إلغاء الكل</Button>
-                        <Button onClick={() => setFormData(prev => ({...prev, permissions: ALL_PERMISSIONS.map(p => p.id)}))} variant="outline" className='mr-2'>تحديد الكل</Button>
+                        <Button onClick={() => setFormData(prev => ({...prev, permissions: ALL_PERMISSIONS.map(p => p.id)}))} variant="outline">تحديد الكل</Button>
                     </div>
                     <Button onClick={handleUpdatePermissions} className="bg-blue-600 hover:bg-blue-700">حفظ الصلاحيات</Button>
                 </DialogFooter>
