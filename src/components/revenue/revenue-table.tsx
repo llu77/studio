@@ -16,13 +16,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { BranchContext } from "@/app/(app)/layout";
+import { useToast } from "@/hooks/use-toast";
+
 
 type RevenueDistribution = {
   employeeName: string;
   amount: number;
 };
 
-type RevenueRecord = {
+export type RevenueRecord = {
   id: string;
   date: string;
   totalRevenue: number;
@@ -32,56 +34,6 @@ type RevenueRecord = {
   status: "Matched" | "Discrepancy" | "Unbalanced";
   discrepancyReason?: string;
 };
-
-const mockData: RevenueRecord[] = [
-  {
-    id: "REV001",
-    date: "2024-07-20",
-    totalRevenue: 2500,
-    cash: 1000,
-    card: 1500,
-    distribution: [
-      { employeeName: "أحمد علي", amount: 1300 },
-      { employeeName: "فاطمة محمد", amount: 1200 },
-    ],
-    status: "Matched",
-  },
-  {
-    id: "REV002",
-    date: "2024-07-19",
-    totalRevenue: 1800,
-    cash: 800,
-    card: 1050,
-    distribution: [
-      { employeeName: "محمد إسماعيل", amount: 1800 },
-    ],
-    status: "Discrepancy",
-    discrepancyReason: "زيادة 50 ريال في صندوق الشبكة."
-  },
-  {
-    id: "REV003",
-    date: "2024-07-18",
-    totalRevenue: 3200,
-    cash: 1200,
-    card: 2000,
-    distribution: [
-      { employeeName: "عبدالحي", amount: 1600 },
-      { employeeName: "يوسف خالد", amount: 1500 },
-    ],
-    status: "Unbalanced",
-  },
-  {
-    id: "REV004",
-    date: "2024-07-17",
-    totalRevenue: 2150.50,
-    cash: 1000.50,
-    card: 1150,
-    distribution: [
-      { employeeName: "عبدالحي", amount: 2150.50 },
-    ],
-    status: "Matched",
-  },
-];
 
 const statusVariantMap: { [key in RevenueRecord['status']]: 'default' | 'destructive' | 'secondary' } = {
     Matched: 'default',
@@ -137,23 +89,46 @@ const PrintableRevenue = ({ records, branch }: { records: RevenueRecord[], branc
 );
 
 
-export function RevenueTable() {
+interface RevenueTableProps {
+    records: RevenueRecord[];
+    onDelete: (id: string) => void;
+}
+
+
+export function RevenueTable({ records, onDelete }: RevenueTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [filteredData, setFilteredData] = React.useState(mockData);
+  const [filteredData, setFilteredData] = React.useState(records);
   const { currentBranch } = React.useContext(BranchContext);
   const printRef = React.useRef(null);
+  const { toast } = useToast();
 
   React.useEffect(() => {
-    const results = mockData.filter(record =>
+    const results = records.filter(record =>
       record.date.includes(searchTerm) ||
       record.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.distribution.some(d => d.employeeName.includes(searchTerm))
     );
     setFilteredData(results);
-  }, [searchTerm]);
+  }, [searchTerm, records]);
 
   const handlePrint = () => {
       window.print();
+  }
+
+  const handleDelete = (id: string) => {
+    onDelete(id);
+    toast({
+      variant: "destructive",
+      title: "تم الحذف",
+      description: `تم حذف سجل الإيراد رقم ${id}.`,
+    });
+  };
+
+  const handleEdit = (id: string) => {
+    toast({
+        title: "غير متاح حالياً",
+        description: `ميزة تعديل سجل الإيراد ${id} سيتم إضافتها قريباً.`,
+    });
   }
 
   return (
@@ -223,13 +198,18 @@ export function RevenueTable() {
                                               <p>{record.discrepancyReason}</p>
                                           </TooltipContent>
                                       )}
+                                      {record.status === 'Unbalanced' && (
+                                           <TooltipContent>
+                                              <p>مجموع المبالغ الموزعة لا يساوي إجمالي الإيرادات.</p>
+                                          </TooltipContent>
+                                      )}
                                   </Tooltip>
                               </TableCell>
                               <TableCell className="text-left">
                                   <div className="flex gap-1 justify-end">
                                       <Tooltip>
                                           <TooltipTrigger asChild>
-                                              <Button variant="ghost" size="icon">
+                                              <Button variant="ghost" size="icon" onClick={() => handleEdit(record.id)}>
                                                   <FilePenLine className="h-4 w-4" />
                                                   <span className="sr-only">تعديل</span>
                                               </Button>
@@ -238,7 +218,7 @@ export function RevenueTable() {
                                       </Tooltip>
                                       <Tooltip>
                                           <TooltipTrigger asChild>
-                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(record.id)}>
                                                   <Trash2 className="h-4 w-4" />
                                                   <span className="sr-only">حذف</span>
                                               </Button>

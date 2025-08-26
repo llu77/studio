@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { UserContext } from "@/app/(app)/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { RevenueRecord } from "./revenue-table";
 
 
 const revenueFormSchema = z.object({
@@ -47,7 +48,12 @@ const revenueFormSchema = z.object({
 
 type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 
-export function RevenueForm() {
+interface RevenueFormProps {
+    onSave: (data: Omit<RevenueRecord, 'id' | 'status'>) => void;
+}
+
+
+export function RevenueForm({ onSave }: RevenueFormProps) {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
 
@@ -87,7 +93,7 @@ export function RevenueForm() {
     );
 
     const onSubmit: SubmitHandler<RevenueFormValues> = (data) => {
-        console.log(data);
+        onSave(data);
         toast({
             title: "نجاح",
             description: "تم حفظ بيانات الإيراد بنجاح.",
@@ -116,21 +122,21 @@ export function RevenueForm() {
                             <FormField control={form.control} name="totalRevenue" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>إجمالي الإيرادات</FormLabel>
-                                    <FormControl><Input type="number" placeholder="3000" {...field} /></FormControl>
+                                    <FormControl><Input type="number" placeholder="3000" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                             <FormField control={form.control} name="cash" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>الكاش</FormLabel>
-                                    <FormControl><Input type="number" placeholder="1000" {...field} /></FormControl>
+                                    <FormControl><Input type="number" placeholder="1000" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                             <FormField control={form.control} name="card" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>الشبكة</FormLabel>
-                                    <FormControl><Input type="number" placeholder="2000" {...field} /></FormControl>
+                                    <FormControl><Input type="number" placeholder="2000" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
