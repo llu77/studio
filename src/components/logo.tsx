@@ -21,7 +21,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         fontWeight="600"
         fill="hsl(var(--foreground))"
       >
-        BranchFlow LOW
+        BranchFlow
       </text>
     </svg>
   );
