@@ -258,7 +258,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">إدارة المستخدمين</h1>
           <p className="text-gray-400">إدارة حسابات المستخدمين والصلاحيات</p>
@@ -286,44 +286,48 @@ export default function AdminUsers() {
                 <DialogHeader>
                   <DialogTitle className="text-xl">إضافة مستخدم جديد</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleAddUser} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">الاسم</Label>
-                    <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">البريد الإلكتروني</Label>
-                    <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">كلمة المرور</Label>
-                    <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="role">الدور</Label>
-                    <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                        <SelectItem value="admin">مدير النظام</SelectItem>
-                        <SelectItem value="manager">مشرف</SelectItem>
-                        <SelectItem value="employee">موظف</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="branch">الفرع</Label>
-                    <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
-                      <SelectContent className="bg-gray-700 border-gray-600 text-white">
-                        {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="position">المنصب</Label>
-                    <Input id="position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
-                  </div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">إضافة المستخدم</Button>
+                <form onSubmit={handleAddUser}>
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
+                      <div>
+                        <Label htmlFor="name">الاسم</Label>
+                        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">البريد الإلكتروني</Label>
+                        <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">كلمة المرور</Label>
+                        <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="role">الدور</Label>
+                        <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
+                          <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                            <SelectItem value="admin">مدير النظام</SelectItem>
+                            <SelectItem value="manager">مشرف</SelectItem>
+                            <SelectItem value="employee">موظف</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="branch">الفرع</Label>
+                        <Select value={formData.branch} onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+                          <SelectTrigger className="bg-gray-700 border-gray-600 text-white"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                          <SelectContent className="bg-gray-700 border-gray-600 text-white">
+                            {BRANCHES.map(branch => (<SelectItem key={branch} value={branch}>{branch}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="position">المنصب</Label>
+                        <Input id="position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required />
+                      </div>
+                    </div>
+                  <DialogFooter className="mt-4">
+                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">إضافة المستخدم</Button>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
@@ -401,7 +405,8 @@ export default function AdminUsers() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="bg-gray-800 text-white max-w-md border-gray-700">
             <DialogHeader><DialogTitle className="text-xl">تعديل المستخدم</DialogTitle></DialogHeader>
-            <form onSubmit={handleEditUser} className="space-y-4">
+            <form onSubmit={handleEditUser}>
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
                <div><Label>الاسم</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
                <div><Label>البريد الإلكتروني</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
                <div><Label>كلمة المرور (اتركها فارغة لعدم التغيير)</Label><Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-gray-700 border-gray-600 text-white" /></div>
@@ -426,7 +431,10 @@ export default function AdminUsers() {
                   </Select>
                 </div>
                <div><Label>المنصب</Label><Input value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="bg-gray-700 border-gray-600 text-white" required /></div>
+              </div>
+              <DialogFooter className="mt-4">
                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">حفظ التغييرات</Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
