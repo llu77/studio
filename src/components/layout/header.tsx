@@ -5,8 +5,7 @@ import React, { useContext } from 'react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Building } from "lucide-react";
+import { LogOut, User, Building, BrainCircuit } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePathname, useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,27 +63,25 @@ export function Header() {
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar>
-                <AvatarImage src={user?.photoURL || "https://i.pravatar.cc/150"} alt={user?.displayName || "User"} />
-                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="sr-only">Toggle user menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user?.displayName || user?.email}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="ml-2 h-4 w-4" />
-              <span>الملف الشخصي</span>
-            </DropdownMenuItem>
-             <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="ml-2 h-4 w-4" />
-              <span>تسجيل الخروج</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-3">
+                    <BrainCircuit className="h-5 w-5 text-primary" />
+                    <span className="hidden md:inline font-semibold">Symbol AI</span>
+                    <span className="sr-only">Toggle user menu</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{user?.displayName || user?.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                <User className="ml-2 h-4 w-4" />
+                <span>الملف الشخصي</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="ml-2 h-4 w-4" />
+                <span>تسجيل الخروج</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
