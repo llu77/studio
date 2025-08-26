@@ -49,16 +49,8 @@ export default function AccountingIntelligencePage() {
   const router = useRouter()
 
   useEffect(() => {
-    checkAuth()
     performAnalysis()
   }, [selectedPeriod])
-
-  const checkAuth = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem('token') : null
-    if (!token) {
-      router.push('/')
-    }
-  }
 
   const performAnalysis = async () => {
     setLoading(true)
@@ -202,7 +194,7 @@ export default function AccountingIntelligencePage() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-4 md:p-6 lg:p-8 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-white text-xl">جاري التحليل الذكي...</div>
       </div>
     )
@@ -750,5 +742,3 @@ export default function AccountingIntelligencePage() {
     </div>
   )
 }
-
-    
