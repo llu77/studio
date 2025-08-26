@@ -27,6 +27,7 @@ import {
   type ComplianceCheck,
   type IntelligentRecommendation
 } from '@/lib/accounting-intelligence'
+import { Loader2 } from 'lucide-react'
 
 interface AnalysisResult {
   benford: BenfordAnalysis | null
@@ -44,6 +45,7 @@ interface AnalysisResult {
 export default function AccountingIntelligencePage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState<'fraud' | 'ratios' | 'anomalies' | 'predictions' | 'compliance' | 'recommendations'>('fraud')
   const [selectedPeriod, setSelectedPeriod] = useState('current')
   const router = useRouter()
@@ -53,13 +55,14 @@ export default function AccountingIntelligencePage() {
   }, [selectedPeriod])
 
   const performAnalysis = async () => {
+    setIsAnalyzing(true);
     setLoading(true)
     try {
       // بيانات تجريبية للتحليل
       const transactions = generateMockTransactions()
       const financialData = generateMockFinancialData()
       const activities = generateMockActivities()
-      const historicalRevenue = [95000, 102000, 108000, 115000, 120000, 125000, 130000, 135000]
+      const historicalRevenue = Array.from({length: 8}, (_, i) => 95000 + (Math.random() * 10000) + (i * 5000))
       
       // تنفيذ التحليلات
       const benford = analyzeBenfordLaw(transactions.map(t => t.amount))
@@ -78,14 +81,14 @@ export default function AccountingIntelligencePage() {
       // التنبؤات
       const predictions = new Map<string, FinancialPrediction>()
       predictions.set('revenue', predictFinancialMetric(historicalRevenue))
-      predictions.set('expenses', predictFinancialMetric(historicalRevenue.map(r => r * 0.78)))
+      predictions.set('expenses', predictFinancialMetric(historicalRevenue.map(r => r * (0.75 + Math.random() * 0.05))))
       
       // فحوصات الامتثال
       const compliance = performComplianceChecks({
         transactions,
         financialRatios: {
           currentRatio: liquidity.currentRatio.value,
-          debtToEquity: 1.5
+          debtToEquity: 1.2 + Math.random()
         }
       })
       
@@ -116,11 +119,13 @@ export default function AccountingIntelligencePage() {
       console.error('Error performing analysis:', error)
     } finally {
       setLoading(false)
+      setIsAnalyzing(false);
     }
   }
 
   const generateMockTransactions = () => {
     const transactions = []
+    const baseDate = Date.now();
     for (let i = 0; i < 500; i++) {
       const amount = Math.random() < 0.1 
         ? Math.round(Math.random() * 10) * 1000  // أرقام مستديرة مشبوهة
@@ -129,7 +134,7 @@ export default function AccountingIntelligencePage() {
       transactions.push({
         id: `TRX-${i}`,
         amount,
-        date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        date: new Date(baseDate - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
         employeeId: `EMP-${Math.floor(Math.random() * 10)}`,
         description: `معاملة ${i}`,
         approved: amount < 10000 || Math.random() > 0.2
@@ -137,10 +142,10 @@ export default function AccountingIntelligencePage() {
     }
     
     // إضافة معاملات مكررة
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < (Math.floor(Math.random() * 4) + 2); i++) {
       transactions.push({
         id: `DUP-${i}`,
-        amount: 9999,
+        amount: 9999 + Math.random(),
         date: new Date().toISOString(),
         employeeId: 'EMP-SUSPECT',
         description: 'معاملة مكررة',
@@ -152,29 +157,30 @@ export default function AccountingIntelligencePage() {
   }
 
   const generateMockFinancialData = () => ({
-    currentAssets: 250000,
-    currentLiabilities: 150000,
-    inventory: 50000,
-    cash: 75000,
-    revenue: 135000,
-    costOfGoodsSold: 81000,
-    averageInventory: 45000
+    currentAssets: 250000 + (Math.random() - 0.5) * 50000,
+    currentLiabilities: 150000 + (Math.random() - 0.5) * 30000,
+    inventory: 50000 + (Math.random() - 0.5) * 10000,
+    cash: 75000 + (Math.random() - 0.5) * 20000,
+    revenue: 135000 + (Math.random() - 0.5) * 15000,
+    costOfGoodsSold: 81000 + (Math.random() - 0.5) * 10000,
+    averageInventory: 45000 + (Math.random() - 0.5) * 5000
   })
 
   const generateMockActivities = () => {
     const activities = []
     const users = ['user1', 'user2', 'user3', 'suspect']
     const actions = ['login', 'view_report', 'edit_transaction', 'approve_payment', 'export_data']
-    
+    const baseDate = Date.now();
+
     for (let i = 0; i < 200; i++) {
       const userId = users[Math.floor(Math.random() * users.length)]
       const hour = userId === 'suspect' 
-        ? Math.random() < 0.7 ? 2 : 14  // نشاط مشبوه في أوقات غريبة
+        ? Math.random() < 0.7 ? (Math.floor(Math.random() * 4) + 1) : (Math.floor(Math.random() * 4) + 21) // 1-4 AM or 9-12 PM
         : Math.floor(Math.random() * 8) + 9
       
       activities.push({
         userId,
-        timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+        timestamp: new Date(baseDate - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
         action: actions[Math.floor(Math.random() * actions.length)],
         amount: Math.random() < 0.3 ? Math.random() * 10000 : undefined
       })
@@ -192,7 +198,7 @@ export default function AccountingIntelligencePage() {
     }
   }
 
-  if (loading) {
+  if (loading && !analysisResult) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-white text-xl">جاري التحليل الذكي...</div>
@@ -732,9 +738,17 @@ export default function AccountingIntelligencePage() {
           <div className="flex justify-center">
             <button
               onClick={performAnalysis}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              disabled={isAnalyzing}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              🔄 إعادة التحليل
+              {isAnalyzing ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    جاري التحليل...
+                  </>
+              ) : (
+                  '🔄 إعادة التحليل'
+              )}
             </button>
           </div>
         </div>
