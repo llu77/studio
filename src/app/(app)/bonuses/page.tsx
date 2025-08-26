@@ -7,27 +7,40 @@ import { Badge } from "@/components/ui/badge";
 import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { BranchContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 
-// --- Data ---
-const branchData = {
-    laban: {
-        employees: [
-            { id: 1, name: 'أحمد علي', weeklyRevenue: [2500, 2950, 3600, 1400] },
-            { id: 2, name: 'فاطمة محمد', weeklyRevenue: [1350, 1820, 1750, 2410] },
-        ]
-    },
-    tuwaiq: {
-        employees: [
-            { id: 3, name: 'يوسف خالد', weeklyRevenue: [3800, 3400, 4100, 3550] },
-            { id: 4, name: 'عبدالحي', weeklyRevenue: [2800, 2300, 1900, 1200] },
-        ]
-    }
+const mockUsersData = {
+    laban: [
+        { id: 'USR002', name: 'أحمد علي' },
+        { id: 'USR005', name: 'فاطمة محمد' },
+    ],
+    tuwaiq: [
+        { id: 'USR003', name: 'يوسف خالد' },
+        { id: 'USR004', name: 'عبدالحي' },
+    ]
 };
 
-// --- Logic ---
+const mockRevenueData = [
+  { week: 0, employeeName: "أحمد علي", amount: 2500 },
+  { week: 1, employeeName: "أحمد علي", amount: 2950 },
+  { week: 2, employeeName: "أحمد علي", amount: 3600 },
+  { week: 3, employeeName: "أحمد علي", amount: 1400 },
+  { week: 0, employeeName: "فاطمة محمد", amount: 1350 },
+  { week: 1, employeeName: "فاطمة محمد", amount: 1820 },
+  { week: 2, employeeName: "فاطمة محمد", amount: 1750 },
+  { week: 3, employeeName: "فاطمة محمد", amount: 2410 },
+  { week: 0, employeeName: "يوسف خالد", amount: 3800 },
+  { week: 1, employeeName: "يوسف خالد", amount: 3400 },
+  { week: 2, employeeName: "يوسف خالد", amount: 4100 },
+  { week: 3, employeeName: "يوسف خالد", amount: 3550 },
+  { week: 0, employeeName: "عبدالحي", amount: 2800 },
+  { week: 1, employeeName: "عبدالحي", amount: 2300 },
+  { week: 2, employeeName: "عبدالحي", amount: 1900 },
+  { week: 3, employeeName: "عبدالحي", amount: 1200 },
+];
+
 const getBonusTier = (revenue: number) => {
     if (revenue >= 3500) return { bonus: 280, level: 5, color: "text-green-500", icon: <ArrowUp className="h-4 w-4" /> };
     if (revenue >= 2900) return { bonus: 220, level: 4, color: "text-green-400", icon: <ArrowUp className="h-4 w-4" /> };
@@ -42,14 +55,15 @@ const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 
 // --- Component ---
 export default function BonusesPage() {
   const { currentBranch } = useContext(BranchContext);
-  const [selectedWeek, setSelectedWeek] = useState(0); // 0 for Week 1, 1 for Week 2, etc.
+  const [selectedWeek, setSelectedWeek] = useState(0); 
   const { toast } = useToast();
   
-  const data = branchData[currentBranch as keyof typeof branchData] || branchData.laban;
+  const employeesForBranch = mockUsersData[currentBranch as keyof typeof mockUsersData] || mockUsersData.laban;
 
   const weeklyCalculations = useMemo(() => {
-    return data.employees.map(emp => {
-      const revenue = emp.weeklyRevenue[selectedWeek] || 0;
+    return employeesForBranch.map(emp => {
+      const revenueRecord = mockRevenueData.find(r => r.employeeName === emp.name && r.week === selectedWeek);
+      const revenue = revenueRecord ? revenueRecord.amount : 0;
       const { bonus, icon, color } = getBonusTier(revenue);
       return {
         ...emp,
@@ -59,19 +73,20 @@ export default function BonusesPage() {
         color,
       };
     });
-  }, [data.employees, selectedWeek]);
+  }, [employeesForBranch, selectedWeek]);
 
   const totalCalculations = useMemo(() => {
-     return data.employees.map(emp => {
-        const totalRevenue = emp.weeklyRevenue.reduce((sum, rev) => sum + rev, 0);
-        const totalBonus = emp.weeklyRevenue.reduce((sum, rev) => sum + getBonusTier(rev).bonus, 0);
+     return employeesForBranch.map(emp => {
+        const employeeRevenues = mockRevenueData.filter(r => r.employeeName === emp.name);
+        const totalRevenue = employeeRevenues.reduce((sum, rev) => sum + rev.amount, 0);
+        const totalBonus = employeeRevenues.reduce((sum, rev) => sum + getBonusTier(rev.amount).bonus, 0);
         return {
             ...emp,
             totalRevenue,
             totalBonus
         };
      });
-  }, [data.employees]);
+  }, [employeesForBranch]);
 
   const selectedWeekTotalBonus = weeklyCalculations.reduce((sum, item) => sum + item.currentBonus, 0);
   const grandTotalBonus = totalCalculations.reduce((sum, item) => sum + item.totalBonus, 0);
@@ -198,3 +213,5 @@ export default function BonusesPage() {
     </div>
   );
 }
+
+    
