@@ -55,6 +55,9 @@ export function RevenueForm() {
         resolver: zodResolver(revenueFormSchema),
         defaultValues: {
             date: new Date().toISOString().split('T')[0],
+            totalRevenue: '' as unknown as number,
+            cash: '' as unknown as number,
+            card: '' as unknown as number,
             distribution: [{ employeeName: "", amount: 0 }],
             discrepancyReason: "",
         },
