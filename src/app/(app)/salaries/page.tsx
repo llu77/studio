@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
+import { Check, X, ThumbsUp, ThumbsDown } from 'lucide-react'
 
 interface Employee {
   id: string
@@ -17,6 +20,8 @@ interface Employee {
   position: string
   branch: string
 }
+
+type SalaryStatus = 'pending' | 'approved' | 'paid' | 'rejected';
 
 interface SalaryRecord {
   id: number
@@ -28,7 +33,7 @@ interface SalaryRecord {
   deductions: number
   bonuses: number
   netSalary: number
-  status: 'pending' | 'approved' | 'paid'
+  status: SalaryStatus
   createdBy: string
   createdAt: string
 }
@@ -44,13 +49,17 @@ const mockSalaries: SalaryRecord[] = [
     { id: 1, date: '2024-07-31', employeeId: 'USR002', employeeName: 'أحمد علي', branch: 'فرع لبن', basicSalary: 4500, deductions: 200, bonuses: 300, netSalary: 4600, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
     { id: 2, date: '2024-07-31', employeeId: 'USR003', employeeName: 'يوسف خالد', branch: 'فرع طويق', basicSalary: 6000, deductions: 500, bonuses: 750, netSalary: 6250, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
     { id: 3, date: '2024-08-31', employeeId: 'USR002', employeeName: 'أحمد علي', branch: 'فرع لبن', basicSalary: 4500, deductions: 150, bonuses: 0, netSalary: 4350, status: 'approved', createdBy: 'المدير العام', createdAt: '2024-08-28' },
+    { id: 4, date: '2024-08-31', employeeId: 'USR004', employeeName: 'عبدالحي', branch: 'فرع طويق', basicSalary: 4200, deductions: 100, bonuses: 200, netSalary: 4300, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
+    { id: 5, date: '2024-08-31', employeeId: 'USR005', employeeName: 'فاطمة محمد', branch: 'فرع لبن', basicSalary: 4300, deductions: 0, bonuses: 150, netSalary: 4450, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
 ];
 
 
 export default function Salaries() {
   const [salaries, setSalaries] = useState<SalaryRecord[]>(mockSalaries)
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees)
-  const [branches, setBranches] = useState<string[]>(['فرع لبن', 'فرع طويق'])
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     employeeId: '',
     date: new Date().toISOString().split('T')[0],
@@ -115,7 +124,23 @@ export default function Salaries() {
         bonuses: ''
     })
     setSubmitting(false)
+    toast({
+        title: "تم إضافة مسير الراتب",
+        description: "المسير الآن في حالة الانتظار للموافقة.",
+        className: "bg-primary text-primary-foreground",
+    });
   }
+
+  const handleBulkStatusChange = (newStatus: SalaryStatus) => {
+    setSalaries(salaries.map(salary => 
+      selectedRows.includes(salary.id) ? { ...salary, status: newStatus } : salary
+    ));
+    setSelectedRows([]);
+    toast({
+        title: "تم تحديث السجلات بنجاح",
+        description: `تم تحديث حالة ${selectedRows.length} سجل إلى "${getStatusText(newStatus)}".`
+    });
+  };
 
   const handlePrintSalary = (salary: SalaryRecord) => {
      window.print()
@@ -125,20 +150,22 @@ export default function Salaries() {
      window.print()
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: SalaryStatus) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/20 text-yellow-500'
       case 'approved': return 'bg-blue-500/20 text-blue-500'
       case 'paid': return 'bg-green-500/20 text-green-500'
+      case 'rejected': return 'bg-red-500/20 text-red-500'
       default: return 'bg-gray-500/20 text-gray-500'
     }
   }
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: SalaryStatus) => {
     switch (status) {
       case 'pending': return 'قيد الانتظار'
       case 'approved': return 'موافق عليه'
       case 'paid': return 'مدفوع'
+      case 'rejected': return 'مرفوض'
       default: return status
     }
   }
@@ -147,6 +174,8 @@ export default function Salaries() {
   const totalBasic = salaries.reduce((sum, salary) => sum + salary.basicSalary, 0)
   const totalDeductions = salaries.reduce((sum, salary) => sum + salary.deductions, 0)
   const totalBonuses = salaries.reduce((sum, salary) => sum + salary.bonuses, 0)
+
+  const pendingSalaries = useMemo(() => salaries.filter(s => s.status === 'pending'), [salaries]);
 
   if (loading) {
     return (
@@ -161,7 +190,7 @@ export default function Salaries() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">الرواتب</h1>
-            <p className="text-gray-400">إدارة مسيرات الرواتب والمستحقات</p>
+            <p className="text-gray-400">إدارة مسيرات الرواتب والمستحقات ودورات الموافقة.</p>
           </div>
           <Button
             onClick={handleBulkPrint}
@@ -302,13 +331,39 @@ export default function Salaries() {
 
           <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white">مسيرات الرواتب</CardTitle>
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <div>
+                        <CardTitle className="text-xl font-semibold text-white">مسيرات الرواتب</CardTitle>
+                        <CardDescription className="text-gray-400 mt-1">
+                            {selectedRows.length > 0 ? `تم تحديد ${selectedRows.length} سجل.` : `يوجد ${pendingSalaries.length} سجل بانتظار الموافقة.`}
+                        </CardDescription>
+                    </div>
+                    {selectedRows.length > 0 && (
+                        <div className="flex gap-2">
+                            <Button onClick={() => handleBulkStatusChange('approved')} className="bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" />موافقة</Button>
+                            <Button onClick={() => handleBulkStatusChange('rejected')} variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" />رفض</Button>
+                            <Button onClick={() => handleBulkStatusChange('paid')} className="bg-blue-600 hover:bg-blue-700"><Check className="mr-2 h-4 w-4" />دفع</Button>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-gray-700">
+                       <TableHead className="w-10 text-center">
+                            <Checkbox
+                                checked={selectedRows.length === salaries.length && salaries.length > 0}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setSelectedRows(salaries.map(s => s.id));
+                                    } else {
+                                        setSelectedRows([]);
+                                    }
+                                }}
+                            />
+                       </TableHead>
                       <TableHead className="text-gray-400">التاريخ</TableHead>
                       <TableHead className="text-gray-400">الموظف</TableHead>
                       <TableHead className="text-gray-400">الصافي</TableHead>
@@ -318,7 +373,19 @@ export default function Salaries() {
                   </TableHeader>
                   <TableBody>
                     {salaries.map((salary) => (
-                      <TableRow key={salary.id} className="border-gray-700">
+                      <TableRow key={salary.id} className="border-gray-700" data-state={selectedRows.includes(salary.id) ? 'selected' : ''}>
+                        <TableCell className="text-center">
+                             <Checkbox
+                                checked={selectedRows.includes(salary.id)}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setSelectedRows([...selectedRows, salary.id]);
+                                    } else {
+                                        setSelectedRows(selectedRows.filter(id => id !== salary.id));
+                                    }
+                                }}
+                            />
+                        </TableCell>
                         <TableCell>{formatDate(salary.date)}</TableCell>
                         <TableCell>{salary.employeeName}</TableCell>
                         <TableCell className="text-green-400 font-medium">
@@ -332,7 +399,9 @@ export default function Salaries() {
                         <TableCell>
                           <Button
                             onClick={() => handlePrintSalary(salary)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                            variant="ghost"
+                            size="sm"
+                            className="text-white hover:bg-gray-700"
                           >
                             طباعة
                           </Button>
@@ -348,3 +417,5 @@ export default function Salaries() {
       </div>
   )
 }
+
+    
