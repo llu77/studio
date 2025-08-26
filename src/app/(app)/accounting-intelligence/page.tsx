@@ -747,3 +747,5 @@ export default function AccountingIntelligencePage() {
       </div>
   )
 }
+
+    
