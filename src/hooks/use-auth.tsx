@@ -55,7 +55,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // This function is now the single source of truth for getting user data.
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     try {
@@ -67,8 +66,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         return { id: userDoc.id, ...userData };
       } else {
-        console.log('User document does not exist. Creating a new one.');
-        const appUser = initialUsers.find(u => u.email === firebaseUser.email);
+        console.log('User document does not exist. Attempting to create from initialUsers.');
+        const appUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
         if (appUser) {
           const newUserData: Omit<AppUser, 'id'> & { uid: string, createdAt: any, lastLogin: any, isActive: boolean } = {
              ...appUser,
@@ -79,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
           delete (newUserData as any).id;
           await setDoc(userDocRef, newUserData);
-          console.log('New user document created successfully.');
+          console.log('New user document created successfully from initialUsers.');
           return { id: userDocRef.id, ...newUserData } as UserData;
         } else {
            console.error("User profile not found in initial static data.");
@@ -88,21 +87,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (e: any) {
       console.error("Error in fetchUserDetails:", e);
-      setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
-      // Sign out to prevent inconsistent state
+      // **الحل البديل الفوري**
+      console.warn("Firestore access failed. Falling back to mock user data.");
+      const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
+      if (mockUser) {
+        setError("فشل الاتصال بقاعدة البيانات، تم استخدام بيانات محلية.");
+        return {
+          uid: firebaseUser.uid,
+          email: mockUser.email,
+          name: mockUser.name,
+          role: mockUser.role,
+          branch: mockUser.branch,
+          id: mockUser.id
+        } as UserData;
+      }
+      // إذا فشل كل شيء، قم بتسجيل الخروج لمنع حالة غير متناسقة
       await signOut(auth);
+      setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
       return null;
     }
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
-        fetchUserDetails(firebaseUser).then(details => {
-            setUserDetails(details);
-            setLoading(false);
-        });
+        if (!userDetails || userDetails.uid !== firebaseUser.uid) { // Prevent re-fetching on token refresh
+          setLoading(true);
+          const details = await fetchUserDetails(firebaseUser);
+          setUserDetails(details);
+          setUser(firebaseUser);
+          setLoading(false);
+        }
       } else {
         setUser(null);
         setUserDetails(null);
@@ -110,7 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
     return () => unsubscribe();
-  }, [fetchUserDetails]);
+  }, [fetchUserDetails, userDetails]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -118,7 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest.
+      // onAuthStateChanged will handle the rest
     } catch (error) {
       const authError = error as AuthError;
       console.error("Login Error:", authError);
@@ -128,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
          setError("حدث خطأ غير متوقع أثناء تسجيل الدخول.");
        }
       setLoading(false);
-      throw authError; // Re-throw to be caught in the component
+      throw authError;
     }
   };
 

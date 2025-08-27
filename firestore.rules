@@ -4,37 +4,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read their own user document, and create it.
-    // Admins can read and write any user document.
+    // Users Collection
+    // 1. Allow user to read their own document.
+    // 2. Allow user to create their own document.
+    // 3. Allow user to update their own document.
+    // 4. Admins can read/update any user document.
     match /users/{userId} {
       allow read, update: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مدير النظام');
+      allow create: if request.auth != null; // Allow any authenticated user to create a user doc (for signup)
+      allow delete: if false; // Deletion should be handled by a Cloud Function or Admin SDK
+    }
+
+    // Revenue, Expenses, Requests Collections
+    // 1. Admins and Partners can read/write everything.
+    // 2. Supervisors can read/write data for their own branch.
+    // 3. Employees can create new records (like requests) but not read all.
+    match /revenue/{docId} {
+      allow read, write: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['مدير النظام', 'شريك'] ||
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مشرف فرع' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == resource.data.branch));
+      allow create: if request.auth != null;
+    }
+    
+    match /expenses/{docId} {
+       allow read, write: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['مدير النظام', 'شريك'] ||
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مشرف فرع' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == resource.data.branch));
       allow create: if request.auth != null;
     }
 
-    // Allow logged-in users to read and write to these collections.
-    // In production, you should restrict write access further based on roles.
-    match /revenue/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /expenses/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
     match /requests/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /notifications/{docId} {
-        allow read, write: if request.auth != null;
-    }
-
-    match /finance_archive/{docId} {
-        allow read, write: if request.auth != null;
+      allow read: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['مدير النظام', 'شريك'] ||
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مشرف فرع' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == resource.data.employeeBranch) ||
+         (request.auth.uid == resource.data.employeeId)); // Employee can read their own request
+      allow create: if request.auth != null; // Any employee can create a request
+      allow update: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['مدير النظام', 'مشرف فرع']; // Only admins/supervisors can update status
     }
 
-    match /branches/{docId} {
-        allow read, write: if request.auth != null;
+    // Default deny for other collections unless specified
+    match /{path=**}/documents/{document} {
+      allow read, write: if false;
     }
   }
 }

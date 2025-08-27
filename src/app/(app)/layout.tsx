@@ -10,7 +10,7 @@ import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
 import { Expense } from "./expenses/page";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EmployeeRequest } from "./requests/employees/page";
 
@@ -98,9 +98,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
-    // CRITICAL FIX: Only fetch data if userDetails is fully loaded.
-    if (!userDetails) {
-        setLoadingData(authLoading); // Data loading is dependent on auth loading
+    // **الحل الجذري:** لا تحاول جلب البيانات إلا بعد التأكد من اكتمال المصادقة وتحميل بيانات المستخدم
+    if (authLoading || !userDetails) {
+        setLoadingData(authLoading);
         return;
     }
     
@@ -109,37 +109,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
     
-    const collectionsToFetch = ['revenue', 'expenses', 'requests'];
-    const unsubscribers = collectionsToFetch.map(collectionName => {
-        const q = query(collection(db, collectionName), orderBy('date', 'desc'));
-        
-        return onSnapshot(q, (snapshot) => {
-            if (!active) return;
-            const allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // مصفوفة للاحتفاظ بجميع المستمعين لإلغاء الاشتراك عند الخروج
+    const unsubscribers: (() => void)[] = [];
 
-            switch (collectionName) {
-                case 'revenue':
-                    setRevenueRecords(allDocs.filter((r: any) => r.branch === branchName) as RevenueRecord[]);
-                    break;
-                case 'expenses':
-                    setExpenses(allDocs.filter((e: any) => e.branch === branchName) as Expense[]);
-                    break;
-                case 'requests':
-                     // Admins/Partners see all requests, Supervisors see their branch's requests.
-                     if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-                        setRequests(allDocs as EmployeeRequest[]);
-                    } else if (userDetails.role === 'مشرف فرع') {
-                        setRequests(allDocs.filter((req: any) => req.employeeBranch === userDetails.branch) as EmployeeRequest[]);
-                    } else {
-                        // Employees see their own requests, which is handled in the component itself
-                        setRequests(allDocs as EmployeeRequest[]);
-                    }
-                    break;
-            }
-        }, (error) => {
-            console.error(`Error fetching ${collectionName}:`, error);
-        });
-    });
+    const setupSubscription = (collectionName: string, queryConstraints: any[], setter: React.Dispatch<any>) => {
+        try {
+            const q = query(collection(db, collectionName), ...queryConstraints);
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                if (!active) return;
+                const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setter(docs);
+            }, (error) => {
+                console.error(`Error fetching ${collectionName}:`, error);
+                // هنا يمكن إضافة منطق لمعالجة أخطاء الصلاحيات بشكل خاص
+                if (error.code === 'permission-denied') {
+                    // عرض رسالة للمستخدم أو إعادة التوجيه
+                }
+            });
+            unsubscribers.push(unsubscribe);
+        } catch (error) {
+            console.error(`Failed to set up subscription for ${collectionName}:`, error);
+        }
+    };
+
+    // جلب البيانات بناءً على دور المستخدم والفرع المحدد
+    if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
+        setupSubscription('revenue', [where('branch', '==', branchName)], setRevenueRecords);
+        setupSubscription('expenses', [where('branch', '==', branchName)], setExpenses);
+        setupSubscription('requests', [orderBy('date', 'desc')], setRequests);
+    } else if (userDetails.role === 'مشرف فرع') {
+        setupSubscription('revenue', [where('branch', '==', userDetails.branch)], setRevenueRecords);
+        setupSubscription('expenses', [where('branch', '==', userDetails.branch)], setExpenses);
+        setupSubscription('requests', [where('employeeBranch', '==', userDetails.branch)], setRequests);
+    } else { // موظف
+        // الموظف يرى طلباته فقط، ويتم فلترتها في المكون الخاص بها
+        // لا حاجة لجلب بيانات الإيرادات والمصاريف على مستوى الـ layout للموظف العادي
+        setRevenueRecords([]);
+        setExpenses([]);
+        // جلب الطلبات الخاصة بالموظف
+        setupSubscription('requests', [where('employeeId', '==', userDetails.uid)], setRequests);
+    }
 
     setLoadingData(false);
 
@@ -147,7 +156,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       active = false;
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [userDetails, currentBranch, authLoading]); // Rerun when userDetails or branch changes.
+  }, [userDetails, currentBranch, authLoading]);
 
 
 
@@ -204,24 +213,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading) {
+  if (authLoading || !userDetails) { // عرض شاشة التحميل طالما أن المصادقة أو جلب البيانات لم يكتمل
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Logo />
-                <p className="text-muted-foreground">جاري التحقق من الهوية...</p>
-            </div>
-        </div>
-    );
-  }
-  
-  if (!userDetails) {
-      // This can happen briefly between auth state change and userDetails fetch
-      return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <Logo />
-                <p className="text-muted-foreground">جاري تحميل بيانات المستخدم...</p>
+                <p className="text-muted-foreground">
+                    {authLoading ? 'جاري التحقق من الهوية...' : 'جاري تحميل بيانات المستخدم...'}
+                </p>
             </div>
         </div>
     );
@@ -236,7 +235,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <SidebarInset>
                       <Header />
                       <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                          {loadingData ? <p className="text-center">جاري تحميل بيانات الفرع...</p> : children}
+                          {loadingData ? (
+                            <div className="flex justify-center items-center h-full">
+                                <p className="text-center text-muted-foreground">جاري تحميل بيانات الفرع...</p>
+                            </div>
+                          ) : children}
                       </main>
                   </SidebarInset>
               </SidebarProvider>
