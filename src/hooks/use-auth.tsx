@@ -54,8 +54,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     let attempts = 0;
-    const maxAttempts = 5;
-    const delay = 1500; // Increased delay to give Cloud Function more time
+    const maxAttempts = 3; // Reduced for quicker fallback
+    const delay = 1000;
 
     while(attempts < maxAttempts) {
       try {
@@ -65,37 +65,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (userDoc.exists()) {
           console.log("User document found in Firestore.");
           const userData = userDoc.data() as UserData;
-          // Update last login time, but don't block for it
           setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(e => console.warn("Failed to update last login:", e));
           return { ...userData, id: userDoc.id };
         } else {
-           console.log("User document not found, waiting for Cloud Function to create it...");
+           console.log("User document not found, waiting...");
            attempts++;
-           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * attempts)); // Exponential backoff
+           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * attempts));
         }
 
       } catch (e: any) {
         attempts++;
-        console.error(`Error in fetchUserDetails (Attempt ${attempts + 1}):`, e);
-        if (attempts >= maxAttempts) {
-           setError(`Error fetching user data after multiple attempts: ${e.message}. Please contact support.`);
-           return null;
-        }
-        await new Promise(resolve => setTimeout(resolve, delay * attempts));
+        console.error(`Error in fetchUserDetails (Attempt ${attempts}):`, e);
       }
     }
     
-    setError("Failed to fetch user details. The user document might not exist or there are persistent permission issues.");
-    // Fallback to mock data if all else fails to prevent a total crash
+    // --- WORKAROUND START ---
+    // If Firestore fails after all attempts, fallback to mock data to allow app to function.
+    console.warn("CRITICAL: Firestore is inaccessible. Falling back to mock user data.");
+    setError("فشل الاتصال بقاعدة البيانات. سيتم استخدام بيانات وهمية.");
     const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
     if (mockUser) {
-        console.warn("CRITICAL FALLBACK: Using mock user data as a last resort.");
         return {
             uid: firebaseUser.uid,
             ...mockUser,
         };
     }
+    // --- WORKAROUND END ---
 
+    console.error("Failed to fetch user details from Firestore and no mock user found.");
+    setError("Failed to fetch user details. The user document might not exist or there are persistent permission issues.");
     return null;
   }, []);
 
@@ -122,7 +120,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle fetching user details.
       return true;
     } catch (error) {
       const authError = error as AuthError;

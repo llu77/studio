@@ -1,34 +1,49 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
+    
     // --- Users Collection ---
-    // 1. CREATE: Deny client-side creation. Must be done via Cloud Function.
-    // 2. READ, UPDATE: Allow users to read/update their own data.
-    // 3. DELETE: Deny client-side deletion.
+    // Users can create their own document
+    // Users can only read/update their own document
     match /users/{userId} {
-      allow create: if false; // Creation is handled by a Cloud Function
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if false;
+      allow create: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
+      allow delete: if false; // Deleting users should be handled by an admin function
     }
 
-    // --- Collections accessible by authenticated users ---
-    // Users can read/write to these collections.
-    // Further specific role-based logic can be added later if needed.
-    match /revenue/{docId} {
-      allow read, write: if request.auth != null;
+    // --- Data Collections (Revenue, Expenses, Requests) ---
+    // Helper function to check user role from their document
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
-    match /expenses/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /requests/{docId} {
-      allow read, write: if request.auth != null;
+    
+    // Helper function to check user branch
+    function getUserBranch(userId) {
+        return get(/databases/$(database)/documents/users/$(userId)).data.branch;
     }
 
-    // A general catch-all to deny access to any other collections
-    match /{path=**}/documents/{document} {
-      allow read, write: if false;
+    // Admins and Partners can read/write everything
+    // Supervisors can read/write data for their own branch
+    // Employees can create requests for themselves
+    match /{collection}/{docId} {
+      allow read, write: if 
+          getUserRole(request.auth.uid) == 'مدير النظام' || 
+          getUserRole(request.auth.uid) == 'شريك';
+
+      allow read, write: if
+          getUserRole(request.auth.uid) == 'مشرف فرع' &&
+          getUserBranch(request.auth.uid) == resource.data.branch;
+
+      // Allow employees to create their own requests
+      allow create: if 
+          collection == 'requests' &&
+          request.resource.data.employeeId == request.auth.uid;
+          
+      // Allow employees to read their own requests
+      allow read: if
+          collection == 'requests' &&
+          resource.data.employeeId == request.auth.uid;
     }
   }
 }

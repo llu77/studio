@@ -98,6 +98,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
+    // We must have userDetails before we can fetch any data.
     if (authLoading || !userDetails) {
         setLoadingData(authLoading);
         return;
@@ -106,7 +107,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setLoadingData(true);
     let active = true;
 
-    const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
+    const branchNameForQuery = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
     const unsubscribers: (() => void)[] = [];
 
     const setupSubscription = (collectionName: string, queryConstraints: any[], setter: React.Dispatch<any>) => {
@@ -118,9 +119,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setter(docs);
             }, (error) => {
                 console.error(`Error fetching ${collectionName}:`, error);
-                if (error.code === 'permission-denied') {
-                    // Handle permission errors
-                }
+                // We'll rely on the auth hook to display major permission errors.
+                // Optionally, add a toast here.
             });
             unsubscribers.push(unsubscribe);
         } catch (error) {
@@ -128,15 +128,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
     
+    // Base query options
     const baseQueryOptions = [orderBy('date', 'desc'), limit(50)];
+    let branchFilter;
 
     if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-        setupSubscription('revenue', [where('branch', '==', branchName), ...baseQueryOptions], setRevenueRecords);
-        setupSubscription('expenses', [where('branch', '==', branchName), ...baseQueryOptions], setExpenses);
-        setupSubscription('requests', [orderBy('date', 'desc'), limit(100)], setRequests);
+        branchFilter = where('branch', '==', branchNameForQuery);
+        setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
+        setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
+        setupSubscription('requests', [branchFilter, ...baseQueryOptions], setRequests);
     } else if (userDetails.role === 'مشرف فرع') {
-        setupSubscription('revenue', [where('branch', '==', userDetails.branch), ...baseQueryOptions], setRevenueRecords);
-        setupSubscription('expenses', [where('branch', '==', userDetails.branch), ...baseQueryOptions], setExpenses);
+        branchFilter = where('branch', '==', userDetails.branch);
+        setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
+        setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
         setupSubscription('requests', [where('employeeBranch', '==', userDetails.branch), orderBy('date', 'desc'), limit(100)], setRequests);
     } else { // Employee
         setRevenueRecords([]);
@@ -255,8 +259,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!userDetails) {
-      // This state can happen briefly between auth loading and details fetching
-      // or if there's an unrecoverable error in useAuth
       return renderLoadingScreen('جاري تحميل بيانات المستخدم...');
   }
 
