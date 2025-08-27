@@ -63,6 +63,7 @@ export default function EmployeeRequestsPage() {
     const { user: authUser } = useAuth();
     const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [supervisor, setSupervisor] = useState<User | null>(null);
     const [filter, setFilter] = useState('all');
     
     // NEW FEATURE: State for new request form
@@ -77,6 +78,10 @@ export default function EmployeeRequestsPage() {
             setCurrentUser(u || null);
             // Default tab based on role
             setActiveTab(u?.role === 'موظف' ? 'add-request' : 'view-requests');
+             if (u) {
+                const sup = users.find(usr => usr.branch === u.branch && usr.role === 'مشرف فرع');
+                setSupervisor(sup || null);
+            }
         }
     }, [authUser, users]);
 
@@ -275,7 +280,12 @@ export default function EmployeeRequestsPage() {
                         </div>
                         
                         {requestType === 'resignation' ? (
-                            <ResignationForm onSubmit={handleFormSubmit} onCancel={() => setRequestType('')} />
+                            <ResignationForm 
+                                currentUserData={currentUser}
+                                supervisorData={supervisor}
+                                onSubmit={handleFormSubmit} 
+                                onCancel={() => setRequestType('')} 
+                            />
                         ) : requestType !== '' ? (
                            <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
                                 {currentUser?.role !== 'موظف' && (

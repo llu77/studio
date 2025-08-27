@@ -3,37 +3,23 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserContext, BranchContext } from '@/app/(app)/layout';
+import { UserContext, BranchContext, User } from '@/app/(app)/layout';
 import SignatureCanvas from 'react-signature-canvas';
 import pdfService from '@/services/pdf.service';
 import { useAuth } from '@/hooks/use-auth';
 import { Label } from '@/components/ui/label';
 
 interface ResignationFormProps {
+  currentUserData: User | null;
+  supervisorData: User | null;
   onSubmit: (data: any) => void;
   onCancel?: () => void;
 }
 
-const ResignationForm: React.FC<ResignationFormProps> = ({ onSubmit, onCancel }) => {
-  const { user } = useAuth(); // NEW: Get authenticated user
-  const { users } = useContext(UserContext);
-  const [currentUserData, setCurrentUserData] = useState<any>(null);
-  const [supervisorData, setSupervisorData] = useState<any>(null);
-  
+const ResignationForm: React.FC<ResignationFormProps> = ({ currentUserData, supervisorData, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-        const employeeData = users.find(u => u.email === user.email);
-        if (employeeData) {
-            setCurrentUserData(employeeData);
-            const supervisor = users.find(u => u.branch === employeeData.branch && u.role === 'مشرف فرع');
-            setSupervisorData(supervisor);
-        }
-    }
-  }, [user, users]);
 
   const generateResignationLetter = () => {
     if (!currentUserData) return "";
