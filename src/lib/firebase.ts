@@ -1,12 +1,8 @@
-
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-// NEW FEATURE: Import firestore
-import { getFirestore } from "firebase/firestore";
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// NEW FEATURE: Import firestore and persistence
+import { getFirestore, enableIndexedDbPersistence, terminate } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -18,11 +14,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-
 // Initialize Firebase
 let app: FirebaseApp;
 let auth: Auth;
-// NEW FEATURE: Initialize db
 let db;
 
 if (getApps().length === 0) {
@@ -32,8 +26,19 @@ if (getApps().length === 0) {
 }
 
 auth = getAuth(app);
-// NEW FEATURE: Get firestore instance
 db = getFirestore(app);
+
+// Enable Firestore persistence
+if (typeof window !== 'undefined') {
+    enableIndexedDbPersistence(db)
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn('Firestore persistence failed: Multiple tabs open. Persistence will be enabled in one tab only.');
+        } else if (err.code == 'unimplemented') {
+            console.warn('Firestore persistence failed: The current browser does not support all of the features required to enable persistence.');
+        }
+    });
+}
 
 
 export { app, auth, db };
