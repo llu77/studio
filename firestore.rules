@@ -1,75 +1,27 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // دالة للتحقق من الدور
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    
-    // دالة للتحقق من الفرع
-    function getUserBranch() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branchId;
-    }
-    
-    // دالة للتحقق من المشرف
-    function isSupervisorOfBranch(branchId) {
-      return getUserRole() == 'supervisor' && getUserBranch() == branchId;
-    }
-    
-    // تطبيق القواعد لكل collection
+
+    // Allow users to read and write their own data, and create it
     match /users/{userId} {
-      allow read: if request.auth != null && (
-        getUserRole() == 'admin' ||
-        getUserRole() == 'partner' ||
-        (getUserRole() == 'supervisor' && resource.data.branchId == getUserBranch()) ||
-        request.auth.uid == userId
-      );
-      
-      allow write: if getUserRole() == 'admin' || 
-        (getUserRole() == 'supervisor' && resource.data.branchId == getUserBranch());
-    }
-    
-    // قاعدة مهمة: منع دمج البيانات بين الفروع
-    match /branches/{branchId}/data/{document} {
-      allow read: if request.auth != null && (
-        getUserRole() == 'admin' ||
-        getUserRole() == 'partner' ||
-        getUserBranch() == branchId
-      );
-      
-      allow write: if getUserRole() == 'admin' ||
-        isSupervisorOfBranch(branchId);
-    }
-    
-    // قواعد الطلبات
-    match /requests/{requestId} {
-      allow read: if request.auth != null && (
-        getUserRole() == 'admin' || 
-        resource.data.employeeId == request.auth.uid ||
-        (getUserRole() == 'supervisor' && getUserBranch() == resource.data.branchId)
-      );
-      
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
-      allow update: if getUserRole() == 'admin' ||
-        (getUserRole() == 'supervisor' && getUserBranch() == resource.data.branchId);
+    }
+
+    // Allow authenticated users to read and write to other collections
+    match /revenue/{docId} {
+      allow read, write: if request.auth != null;
     }
     
-    // قواعد المالية
-    match /finances/{financeId} {
-      allow read: if request.auth != null && (
-        getUserRole() == 'admin' || 
-        getUserRole() == 'partner' ||
-        (getUserRole() == 'supervisor' && getUserBranch() == resource.data.branchId)
-      );
-      
-      allow write: if getUserRole() == 'admin' ||
-        (getUserRole() == 'supervisor' && getUserBranch() == resource.data.branchId);
+    match /expenses/{docId} {
+      allow read, write: if request.auth != null;
     }
-    
-    // قواعد الأرشيف
-    match /document_archive/{docId} {
-      allow read: if request.auth != null;
-      allow write: if false; // القراءة فقط
+
+    match /requests/{docId} {
+      allow read, write: if request.auth != null;
     }
+
+    // Add other collections as needed
   }
 }
