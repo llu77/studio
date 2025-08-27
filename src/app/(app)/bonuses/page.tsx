@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
-import { BranchContext } from '@/app/(app)/layout';
+import { BranchContext, DataContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
@@ -38,7 +38,8 @@ const getBonusTier = (revenue: number) => {
 const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 'الأسبوع الثالث', 'الأسبوع الرابع'];
 
 // --- Component ---
-export default function BonusesPage({ revenueRecords }: { revenueRecords: RevenueRecord[] }) {
+export default function BonusesPage() {
+  const { revenueRecords } = useContext(DataContext);
   const { currentBranch } = useContext(BranchContext);
   const [selectedWeek, setSelectedWeek] = useState(0); 
   const { toast } = useToast();

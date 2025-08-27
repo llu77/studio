@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { CirclePlus, ListOrdered, FilePenLine, Trash2, Search, Printer } from "l
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { DataContext } from '../layout';
 
 export type Expense = {
     id: string;
@@ -55,7 +56,8 @@ const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => (
 );
 
 
-export default function ExpensesPage({ expenses, addExpense, deleteExpense }: { expenses: Expense[], addExpense: (expense: Omit<Expense, 'id'>) => void, deleteExpense: (id: string) => void }) {
+export default function ExpensesPage() {
+  const { expenses, addExpense, deleteExpense } = useContext(DataContext);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(expenses);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
@@ -298,5 +300,3 @@ export default function ExpensesPage({ expenses, addExpense, deleteExpense }: { 
     </>
   );
 }
-
-    

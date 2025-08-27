@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
@@ -30,6 +30,7 @@ import {
 import { Loader2 } from 'lucide-react'
 import { RevenueRecord } from '../revenue/page'
 import { Expense } from '../expenses/page'
+import { DataContext } from '../layout'
 
 interface AnalysisResult {
   benford: BenfordAnalysis | null
@@ -44,7 +45,8 @@ interface AnalysisResult {
   recommendations: IntelligentRecommendation[]
 }
 
-export default function AccountingIntelligencePage({ revenueRecords, expenses }: { revenueRecords: RevenueRecord[], expenses: Expense[] }) {
+export default function AccountingIntelligencePage() {
+  const { revenueRecords, expenses } = useContext(DataContext);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -748,5 +750,3 @@ export default function AccountingIntelligencePage({ revenueRecords, expenses }:
     </div>
   )
 }
-
-    

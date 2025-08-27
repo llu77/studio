@@ -79,6 +79,24 @@ export const UserContext = React.createContext<{
 });
 
 
+// NEW: Centralized Data Context
+export const DataContext = React.createContext<{
+    revenueRecords: RevenueRecord[];
+    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>) => void;
+    deleteRevenueRecord: (id: string) => void;
+    expenses: Expense[];
+    addExpense: (expense: Omit<Expense, 'id'>) => void;
+    deleteExpense: (id: string) => void;
+}>({
+    revenueRecords: [],
+    addRevenueRecord: () => {},
+    deleteRevenueRecord: () => {},
+    expenses: [],
+    addExpense: () => {},
+    deleteExpense: () => {},
+});
+
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -151,37 +169,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Inject props into child pages
-  const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-        // A more robust way to pass props, checking the component's type if possible
-        // For simplicity, we'll pass all shared state and functions.
-        // A more advanced solution might involve a dedicated context provider for shared data.
-        return React.cloneElement(child, {
-            revenueRecords,
-            expenses,
-            addRevenueRecord,
-            deleteRevenueRecord,
-            addExpense,
-            deleteExpense
-        } as any);
-    }
-    return child;
-  });
-
-
   return (
     <UserContext.Provider value={{ users, addUser, deleteUser }}>
         <BranchContext.Provider value={{ currentBranch, setCurrentBranch }}>
-            <SidebarProvider>
-                <AppSidebarContent />
-                <SidebarInset>
-                    <Header />
-                    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                        {childrenWithProps}
-                    </main>
-                </SidebarInset>
-            </SidebarProvider>
+          <DataContext.Provider value={{ revenueRecords, addRevenueRecord, deleteRevenueRecord, expenses, addExpense, deleteExpense }}>
+              <SidebarProvider>
+                  <AppSidebarContent />
+                  <SidebarInset>
+                      <Header />
+                      <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+                          {children}
+                      </main>
+                  </SidebarInset>
+              </SidebarProvider>
+          </DataContext.Provider>
         </BranchContext.Provider>
     </UserContext.Provider>
   );

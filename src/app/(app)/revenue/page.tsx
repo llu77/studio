@@ -5,11 +5,13 @@ import { RevenueForm } from "@/components/revenue/revenue-form";
 import { RevenueTable, type RevenueRecord } from "@/components/revenue/revenue-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CirclePlus, ListOrdered } from "lucide-react";
-import { useState } from "react";
+import { useContext } from "react";
+import { DataContext } from "../layout";
 
 export type { RevenueRecord };
 
-export default function RevenuePage({ revenueRecords, addRevenueRecord, deleteRevenueRecord }: { revenueRecords: RevenueRecord[], addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>) => void, deleteRevenueRecord: (id: string) => void}) {
+export default function RevenuePage() {
+  const { revenueRecords, addRevenueRecord, deleteRevenueRecord } = useContext(DataContext);
 
   return (
       <Tabs defaultValue="add-revenue" className="w-full">
@@ -32,5 +34,3 @@ export default function RevenuePage({ revenueRecords, addRevenueRecord, deleteRe
       </Tabs>
   );
 }
-
-    
