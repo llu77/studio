@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useEffect, useState, useMemo, useRef, RefObject } from 'react'
+import { useEffect, useState, useMemo, useRef, RefObject, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,13 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Check, X, ThumbsUp, ThumbsDown, Printer } from 'lucide-react'
-
-interface Employee {
-  id: string
-  name: string
-  position: string
-  branch: string
-}
+import { UserContext, User } from '../layout' // NEW FEATURE: Import UserContext
 
 type SalaryStatus = 'pending' | 'approved' | 'paid' | 'rejected';
 
@@ -38,19 +32,13 @@ interface SalaryRecord {
   createdAt: string
 }
 
-const mockEmployees: Employee[] = [
-    { id: 'USR002', name: 'أحمد علي', position: 'موظف', branch: 'فرع لبن' },
-    { id: 'USR003', name: 'يوسف خالد', position: 'مشرف فرع', branch: 'فرع طويق' },
-    { id: 'USR004', name: 'عبدالحي', position: 'موظف', branch: 'فرع طويق' },
-    { id: 'USR005', name: 'فاطمة محمد', position: 'موظف', branch: 'فرع لبن' },
-];
-
+// NEW FEATURE: Removed mockEmployees. Will use UserContext.
 const mockSalaries: SalaryRecord[] = [
-    { id: 1, date: '2024-07-31', employeeId: 'USR002', employeeName: 'أحمد علي', branch: 'فرع لبن', basicSalary: 4500, deductions: 200, bonuses: 300, netSalary: 4600, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
-    { id: 2, date: '2024-07-31', employeeId: 'USR003', employeeName: 'يوسف خالد', branch: 'فرع طويق', basicSalary: 6000, deductions: 500, bonuses: 750, netSalary: 6250, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
-    { id: 3, date: '2024-08-31', employeeId: 'USR002', employeeName: 'أحمد علي', branch: 'فرع لبن', basicSalary: 4500, deductions: 150, bonuses: 0, netSalary: 4350, status: 'approved', createdBy: 'المدير العام', createdAt: '2024-08-28' },
-    { id: 4, date: '2024-08-31', employeeId: 'USR004', employeeName: 'عبدالحي', branch: 'فرع طويق', basicSalary: 4200, deductions: 100, bonuses: 200, netSalary: 4300, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
-    { id: 5, date: '2024-08-31', employeeId: 'USR005', employeeName: 'فاطمة محمد', branch: 'فرع لبن', basicSalary: 4300, deductions: 0, bonuses: 150, netSalary: 4450, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
+    { id: 1, date: '2024-07-31', employeeId: 'USR002', employeeName: 'محمود عماره', branch: 'فرع لبن', basicSalary: 4500, deductions: 200, bonuses: 300, netSalary: 4600, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
+    { id: 2, date: '2024-07-31', employeeId: 'USR005', employeeName: 'محمد إسماعيل', branch: 'فرع طويق', basicSalary: 6000, deductions: 500, bonuses: 750, netSalary: 6250, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
+    { id: 3, date: '2024-08-31', employeeId: 'USR002', employeeName: 'محمود عماره', branch: 'فرع لبن', basicSalary: 4500, deductions: 150, bonuses: 0, netSalary: 4350, status: 'approved', createdBy: 'المدير العام', createdAt: '2024-08-28' },
+    { id: 4, date: '2024-08-31', employeeId: 'USR001', employeeName: 'عبدالحي', branch: 'فرع لبن', basicSalary: 4200, deductions: 100, bonuses: 200, netSalary: 4300, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
+    { id: 5, date: '2024-08-31', employeeId: 'USR004', employeeName: 'السيد', branch: 'فرع لبن', basicSalary: 4300, deductions: 0, bonuses: 150, netSalary: 4450, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
 ];
 
 const getStatusText = (status: SalaryStatus) => {
@@ -100,7 +88,10 @@ const PrintableSalaryReport = ({ records, title }: { records: SalaryRecord[], ti
 
 export default function Salaries() {
   const [salaries, setSalaries] = useState<SalaryRecord[]>(mockSalaries)
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees)
+  // NEW FEATURE: Get users from context
+  const { users } = useContext(UserContext); 
+  const employees = useMemo(() => users.filter(u => u.role === 'موظف' || u.role === 'مشرف فرع'), [users]);
+  
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const { toast } = useToast();
   const [printableReportData, setPrintableReportData] = useState<{ records: SalaryRecord[], title: string } | null>(null);
@@ -319,7 +310,7 @@ export default function Salaries() {
                         <SelectContent className="bg-gray-700 text-white">
                             {employees.map((employee) => (
                                 <SelectItem key={employee.id} value={employee.id}>
-                                {employee.name} - {employee.position}
+                                {employee.name} - {employee.role}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -486,3 +477,5 @@ export default function Salaries() {
     </>
   )
 }
+
+    
