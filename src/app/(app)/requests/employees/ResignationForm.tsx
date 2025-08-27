@@ -61,11 +61,11 @@ const ResignationForm: React.FC<ResignationFormProps> = ({ currentUserData, supe
     try {
       const signatureDataUrl = signatureRef.current?.toDataURL();
       
-      const pdfContent = generateResignationLetter();
+      const resignationText = generateResignationLetter();
       await pdfService.generatePDF({
         title: 'طلب استقالة',
         type: 'request',
-        content: { text: pdfContent },
+        content: { text: resignationText },
         userData: currentUserData,
         branchData: {
           name: currentUserData?.branch,
@@ -76,10 +76,9 @@ const ResignationForm: React.FC<ResignationFormProps> = ({ currentUserData, supe
       // const pdfUrl = await pdfService.uploadToFirebase('resignation_request');
       
       const newRequest = {
-        type: 'استقالة',
-        details: 'طلب استقالة رسمي',
-        status: 'pending',
-        // In a real app, you'd add pdfUrl and signatures here
+        type: 'resignation',
+        details: resignationText,
+        employeeId: currentUserData?.id
       };
 
       onSubmit(newRequest);
@@ -93,7 +92,8 @@ const ResignationForm: React.FC<ResignationFormProps> = ({ currentUserData, supe
   };
 
   if (!currentUserData) {
-      return <p className="text-center text-muted-foreground">جاري تحميل بيانات الموظف...</p>
+      // This should ideally not be shown as the parent component controls rendering
+      return <p className="text-center text-muted-foreground">الرجاء اختيار الموظف أولاً.</p>
   }
 
   return (
@@ -105,7 +105,7 @@ const ResignationForm: React.FC<ResignationFormProps> = ({ currentUserData, supe
       </div>
       
       <div className="signature-section">
-        <Label className="text-base font-semibold mb-2 block">التوقيع الإلكتروني</Label>
+        <Label className="text-base font-semibold mb-2 block">التوقيع الإلكتروني للموظف</Label>
         <div className="border rounded-lg overflow-hidden bg-background">
           <SignatureCanvas
             ref={signatureRef}

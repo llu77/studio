@@ -66,7 +66,10 @@ export default function EmployeeRequestsPage() {
     const [supervisor, setSupervisor] = useState<User | null>(null);
     const [filter, setFilter] = useState('all');
     
-    // NEW FEATURE: State for new request form
+    // NEW: State for resignation form flow
+    const [employeeForResignation, setEmployeeForResignation] = useState<User | null>(null);
+
+    // Form state
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
@@ -81,16 +84,29 @@ export default function EmployeeRequestsPage() {
              if (u) {
                 const sup = users.find(usr => usr.branch === u.branch && usr.role === 'مشرف فرع');
                 setSupervisor(sup || null);
+                // If user is an employee, auto-select them for resignation
+                if (u.role === 'موظف') {
+                    setEmployeeForResignation(u);
+                }
             }
         }
     }, [authUser, users]);
+
+    // NEW: Effect to find supervisor when employee for resignation changes
+    useEffect(() => {
+        if (employeeForResignation) {
+            const sup = users.find(usr => usr.branch === employeeForResignation.branch && usr.role === 'مشرف فرع');
+            setSupervisor(sup || null);
+        } else {
+            setSupervisor(null);
+        }
+    }, [employeeForResignation, users]);
+
 
     const visibleRequests = useMemo(() => {
         if (!currentUser) return [];
 
         let reqs = requests;
-
-        // NEW FEATURE: Role-based filtering logic
         if (currentUser.role === 'مشرف فرع') {
             reqs = requests.filter(r => r.employeeBranch === currentUser.branch);
         } else if (currentUser.role === 'موظف') {
@@ -105,7 +121,7 @@ export default function EmployeeRequestsPage() {
     }, [requests, currentUser, filter]);
 
     const handleFormSubmit = (newRequestData: any) => {
-        const employeeDetails = users.find(u => u.email === authUser?.email);
+        const employeeDetails = newRequestData.employeeId ? users.find(u => u.id === newRequestData.employeeId) : currentUser;
          if(!employeeDetails) return;
 
          const newRequest: EmployeeRequest = {
@@ -114,7 +130,7 @@ export default function EmployeeRequestsPage() {
             employee: employeeDetails.name,
             employeeId: employeeDetails.id,
             employeeBranch: employeeDetails.branch,
-            status: 'pending', // All new requests are pending
+            status: 'pending', 
             ...newRequestData
         };
 
@@ -124,22 +140,26 @@ export default function EmployeeRequestsPage() {
             description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
             className: "bg-primary text-primary-foreground",
         });
-        setRequestType(''); // Reset form
-        setActiveTab('view-requests'); // Switch to view requests after submitting
+        resetForm();
+        setActiveTab('view-requests'); 
+    };
+
+     const resetForm = () => {
+        setRequestType('');
+        setRequestDetails('');
+        setSelectedEmployeeId('');
+        setEmployeeForResignation(null);
+        if(currentUser?.role === 'موظف') {
+            setEmployeeForResignation(currentUser);
+        }
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
         
-        let employeeDetails;
-        // Admin/Supervisor submitting on behalf of an employee
-        if(currentUser?.role !== 'موظف' && selectedEmployeeId){
-             employeeDetails = users.find(u => u.id === selectedEmployeeId);
-        } else { // Employee submitting for themselves
-            employeeDetails = users.find(u => u.email === authUser?.email);
-        }
+        let employeeId = currentUser?.role === 'موظف' ? currentUser.id : selectedEmployeeId;
         
-        if (!requestType || !requestDetails) {
+        if (!requestType || !requestDetails || !employeeId) {
             toast({
                 variant: "destructive",
                 title: "خطأ",
@@ -148,24 +168,11 @@ export default function EmployeeRequestsPage() {
             return;
         }
 
-        if(!employeeDetails) {
-             toast({
-                variant: "destructive",
-                title: "خطأ",
-                description: "لم يتم العثور على الموظف المحدد.",
-            });
-            return;
-        }
-
         handleFormSubmit({
             type: requestType,
             details: requestDetails,
+            employeeId: employeeId
         });
-
-        // Reset form
-        setSelectedEmployeeId('');
-        setRequestType('');
-        setRequestDetails('');
     };
 
     const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
@@ -181,7 +188,7 @@ export default function EmployeeRequestsPage() {
 
     const handlePrintRequest = async (request: EmployeeRequest) => {
         const content = request.type === 'resignation' 
-            ? request.details // Assuming resignation details are stored here
+            ? request.details 
             : `
               نوع الطلب: ${getRequestTypeName(request.type)}
               الموظف: ${request.employee}
@@ -280,12 +287,31 @@ export default function EmployeeRequestsPage() {
                         </div>
                         
                         {requestType === 'resignation' ? (
-                            <ResignationForm 
-                                currentUserData={currentUser}
-                                supervisorData={supervisor}
-                                onSubmit={handleFormSubmit} 
-                                onCancel={() => setRequestType('')} 
-                            />
+                            <div className="space-y-4 border-t pt-6">
+                                {currentUser?.role !== 'موظف' && (
+                                     <div className="space-y-2">
+                                        <Label htmlFor="employee-for-resignation">اختر الموظف لطلب الاستقالة</Label>
+                                        <Select onValueChange={(id) => setEmployeeForResignation(users.find(u => u.id === id) || null)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="اختر الموظف" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك').map(user => (
+                                                    <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                               {employeeForResignation && (
+                                     <ResignationForm 
+                                        currentUserData={employeeForResignation}
+                                        supervisorData={supervisor}
+                                        onSubmit={handleFormSubmit} 
+                                        onCancel={resetForm} 
+                                    />
+                               )}
+                            </div>
                         ) : requestType !== '' ? (
                            <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
                                 {currentUser?.role !== 'موظف' && (
