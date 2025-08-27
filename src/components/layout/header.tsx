@@ -20,14 +20,16 @@ function getPageTitle(pathname: string) {
     if (pathname.startsWith('/requests/employees')) return 'طلبات الموظفين';
     if (pathname.startsWith('/requests/products')) return 'طلبات المنتجات';
     if (pathname.startsWith('/users')) return 'إدارة المستخدمين';
+    if (pathname.startsWith('/salaries')) return 'مسيرات الرواتب';
     if (pathname.startsWith('/reports')) return 'التقارير';
+    if (pathname.startsWith('/accounting-intelligence')) return 'الذكاء المحاسبي';
     if (pathname.startsWith('/settings')) return 'الإعدادات';
     return 'BranchFlow';
 }
 
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const { user, userDetails, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
@@ -47,6 +49,7 @@ export function Header() {
       </div>
 
        <div className="flex items-center gap-2 md:gap-4">
+       {userDetails?.role !== 'موظف' && (
         <div className="w-36 md:w-48">
             <Select value={currentBranch} onValueChange={setCurrentBranch}>
                 <SelectTrigger className="w-full bg-secondary border-secondary-border">
@@ -61,12 +64,16 @@ export function Header() {
                 </SelectContent>
             </Select>
         </div>
+       )}
 
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-3">
-                    <BrainCircuit className="h-5 w-5 text-primary" />
-                    <span className="hidden md:inline font-semibold">Symbol AI</span>
+                     <div className="flex flex-col items-end">
+                        <span className="font-semibold text-sm">{userDetails?.name}</span>
+                        <span className="text-xs text-muted-foreground">{userDetails?.role}</span>
+                    </div>
+                    <User className="h-5 w-5 text-primary" />
                     <span className="sr-only">Toggle user menu</span>
                 </Button>
             </DropdownMenuTrigger>
