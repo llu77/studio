@@ -14,50 +14,31 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AuthError } from 'firebase/auth';
-// NEW FEATURE: Added Select components for branch selection
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// NEW FEATURE: Import firestore functionalities to fetch branches and user data
-import { doc, getDoc, collection, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase'; 
 
-// NEW FEATURE: Mock branches data until Firestore is connected
 const mockBranches = [
     { id: 'branch_laban', name: 'فرع لبن' },
     { id: 'branch_tuwaiq', name: 'فرع طويق' },
 ];
 
-
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading, userDetails, logout } = useAuth();
+  const { user, login, loading, userDetails } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
 
-  // NEW FEATURE: State for branch selection and enhanced security
   const [branchId, setBranchId] = useState('');
   const [branches, setBranches] = useState<{id: string, name: string}[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
 
-  // NEW FEATURE: Fetch branches on component mount
   useEffect(() => {
-    const fetchBranches = async () => {
-        try {
-            // In a real scenario, this would fetch from Firestore. Using mock for now.
-            // const branchesSnapshot = await getDocs(collection(db, 'branches'));
-            // const branchesData = branchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as {id: string, name: string}[];
-            setBranches(mockBranches);
-        } catch (e) {
-            console.error("Failed to fetch branches: ", e);
-            setError("فشل في تحميل قائمة الفروع.");
-        }
-    };
-    fetchBranches();
+    setBranches(mockBranches);
   }, []);
 
-  // NEW FEATURE: Check lock status on component mount
   useEffect(() => {
     const lockTime = localStorage.getItem('lockTime');
     if (lockTime) {
@@ -85,40 +66,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     
-    // NEW FEATURE: Lockout check
     if (locked) {
         setError('الحساب مقفل مؤقتاً. حاول بعد 30 دقيقة.');
         return;
     }
 
-    // Branch selection is not mandatory for initial login/creation
-    // if (!branchId) {
-    //     setError("الرجاء اختيار الفرع للمتابعة.");
-    //     return;
-    // }
-
     try {
-      const loggedInUser = await login(email, password);
+      await login(email, password);
       
-      const userDocRef = doc(db, "users", loggedInUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const userBranchId = userData.branch === 'فرع لبن' ? 'branch_laban' : userData.branch === 'فرع طويق' ? 'branch_tuwaiq' : 'all';
-
-          if (branchId && userBranchId !== 'all' && userData.role !== 'مدير النظام' && userBranchId !== branchId) {
-              await logout();
-              throw new Error('الفرع المختار غير صحيح لهذا الحساب.');
-          }
-
-          await updateDoc(userDocRef, {
-            lastLogin: serverTimestamp(),
-            loginBranch: branchId ? (branchId === 'branch_laban' ? 'فرع لبن' : 'فرع طويق') : userData.branch,
-          });
-      }
-      
-      setAttempts(0); // Reset attempts on successful login
+      setAttempts(0);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -140,7 +96,6 @@ export default function LoginPage() {
             errorMessage = authError.message;
         }
 
-        // NEW FEATURE: Brute-force protection
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         if (newAttempts >= 5) {
@@ -202,28 +157,6 @@ export default function LoginPage() {
                 disabled={loading || locked}
                 />
             </div>
-
-            {/* NEW FEATURE: Branch Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="branch">الفرع (اختياري عند أول دخول)</Label>
-              <Select value={branchId} onValueChange={setBranchId} disabled={loading || locked}>
-                <SelectTrigger id="branch">
-                  <SelectValue placeholder="اختر الفرع" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.length > 0 ? (
-                    branches.map(branch => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="loading" disabled>جاري تحميل الفروع...</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
             <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={loading || locked}>
               {loading ? <Loader2 className="animate-spin" /> : locked ? 'الحساب مقفل' : 'تسجيل الدخول'}
             </Button>

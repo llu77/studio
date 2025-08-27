@@ -38,11 +38,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (userDoc.exists()) {
           setUserDetails({ id: userDoc.id, ...userDoc.data() } as AppUser & { id: string });
         } else {
+            // This case handles when a user is in Auth but not in Firestore.
+            // We can create the Firestore doc from our initialUsers list.
             const appUser = initialUsers.find(u => u.email === user.email);
             if (appUser) {
-                await setDoc(userDocRef, appUser);
-                setUserDetails({ id: userDocRef.id, ...appUser } as AppUser & { id: string });
+                try {
+                    await setDoc(userDocRef, appUser);
+                    setUserDetails({ id: userDocRef.id, ...appUser } as AppUser & { id: string });
+                } catch (e) {
+                     console.error("Error setting user document:", e);
+                     setUserDetails(null);
+                     await signOut(auth);
+                }
             } else {
+                // If user is not in our initial list, they shouldn't be here.
                 setUserDetails(null);
                 await signOut(auth);
             }
@@ -68,8 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (appUser) {
                 try {
                     const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    const userDocRef = doc(db, "users", newUserCredential.user.uid);
-                    await setDoc(userDocRef, appUser);
+                    // The onAuthStateChanged listener will handle setting the userDoc.
                     return newUserCredential.user;
                 } catch (createError) {
                     console.error("User Creation Error:", createError);
@@ -87,9 +95,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await signOut(auth);
     } catch (error) {
         console.error("Logout Error:", error);
-    } finally {
-        setUser(null);
-        setUserDetails(null);
     }
   };
 
