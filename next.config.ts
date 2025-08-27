@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -24,6 +25,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // This is the fix for the cross-origin error in the development environment.
+    allowedDevOrigins: ["https://*.cluster-oayqgyglpfgseqclbygurw4xd4.cloudworkstations.dev"],
+  }
 };
 
 export default nextConfig;
