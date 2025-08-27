@@ -7,23 +7,27 @@ import { Badge } from "@/components/ui/badge";
 import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { BranchContext, DataContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { RevenueRecord } from '../revenue/page';
 
 const mockUsersData = {
-    laban: [
-        { id: 'USR002', name: 'أحمد علي' },
-        { id: 'USR005', name: 'فاطمة محمد' },
+    'فرع لبن': [
+        { id: 'USR002', name: 'محمود عماره' },
+        { id: 'USR003', name: 'علاء ناصر' },
+        { id: 'USR001', name: 'عبدالحي' },
+        { id: 'USR004', name: 'السيد' },
     ],
-    tuwaiq: [
-        { id: 'USR003', name: 'يوسف خالد' },
-        { id: 'USR004', name: 'عبدالحي' },
+    'فرع طويق': [
+        { id: 'USR006', name: 'محمد ناصر' },
+        { id: 'USR007', name: 'فارس' },
+        { id: 'USR008', name: 'السيد (طويق)' },
+        { id: 'USR005', name: 'محمد إسماعيل' },
     ]
 };
 
-// This is now derived from the actual revenue records
+// NEW FEATURE: This mock data is no longer used, will rely on DataContext
 // const mockRevenueData = [ ... ];
 
 const getBonusTier = (revenue: number) => {
@@ -44,17 +48,18 @@ export default function BonusesPage() {
   const [selectedWeek, setSelectedWeek] = useState(0); 
   const { toast } = useToast();
   
-  const employeesForBranch = mockUsersData[currentBranch as keyof typeof mockUsersData] || mockUsersData.laban;
+  const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
+  const employeesForBranch = mockUsersData[branchName as keyof typeof mockUsersData] || [];
 
-  // Function to get revenue for a specific employee for a specific week of the month
+  // NEW FEATURE: Function now uses real revenue records from context
   const getWeeklyRevenueForEmployee = (employeeName: string, weekIndex: number) => {
     if (!revenueRecords) return 0;
     
-    // This is a simplified logic. A real app would have more robust date handling.
-    // It assumes records are for the current month and divides them into 4 weeks.
+    // This logic assumes records are for the current month and divides them into 4 weeks.
     const weekRecords = revenueRecords.filter(record => {
         const recordDate = new Date(record.date);
         const dayOfMonth = recordDate.getDate();
+        // Simple weekly bucketing: Days 1-7 (week 0), 8-14 (week 1), etc.
         const week = Math.floor((dayOfMonth - 1) / 7);
         return week === weekIndex;
     });
@@ -121,7 +126,7 @@ export default function BonusesPage() {
             <div className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5 text-primary"/>
                 <span>فرع:</span>
-                <span className="font-bold">{currentBranch === 'laban' ? 'لبن' : 'طويق'}</span>
+                <span className="font-bold">{branchName}</span>
             </div>
             <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
                 <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
@@ -222,3 +227,5 @@ export default function BonusesPage() {
     </div>
   );
 }
+
+    
