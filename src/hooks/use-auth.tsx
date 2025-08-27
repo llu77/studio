@@ -2,14 +2,15 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+// NEW FEATURE: Added browserSessionPersistence and setPersistence for session management
+import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import type { Auth, AuthError } from 'firebase/auth';
+import type { Auth, AuthError, UserCredential } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>; // NEW: Returns user on success
   logout: () => Promise<void>;
 }
 
@@ -31,10 +32,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setLoading(true);
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        // NEW FEATURE: Set session persistence
+        await setPersistence(auth, browserSessionPersistence);
+        const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, password);
+        return userCredential.user;
     } catch (error) {
         setLoading(false);
         throw error;
@@ -44,6 +48,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     await signOut(auth);
+    // NEW FEATURE: Clear local storage on logout
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userBranch');
+    localStorage.removeItem('userRole');
     setUser(null);
     setLoading(false);
   };

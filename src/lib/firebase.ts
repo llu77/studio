@@ -2,6 +2,9 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+// NEW FEATURE: Import firestore
+import { getFirestore } from "firebase/firestore";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -19,6 +22,8 @@ const firebaseConfig = {
 // Initialize Firebase
 let app: FirebaseApp;
 let auth: Auth;
+// NEW FEATURE: Initialize db
+let db;
 
 if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
@@ -27,6 +32,8 @@ if (getApps().length === 0) {
 }
 
 auth = getAuth(app);
+// NEW FEATURE: Get firestore instance
+db = getFirestore(app);
 
 
-export { app, auth };
+export { app, auth, db };
