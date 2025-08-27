@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     let attempts = 0;
-    const maxAttempts = 3; // Reduced for quicker fallback
+    const maxAttempts = 5; 
     const delay = 1000;
 
     while(attempts < maxAttempts) {
@@ -66,25 +66,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log("User document found in Firestore.");
           const userData = userDoc.data() as UserData;
           setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(e => console.warn("Failed to update last login:", e));
-          return { ...userData, id: userDoc.id };
+          return { ...userData, id: userDoc.id, uid: firebaseUser.uid };
         } else {
-           console.log("User document not found, waiting...");
+           console.log("User document not found, waiting for Cloud Function to create it...");
            attempts++;
-           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * attempts));
+           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * (attempts + 1))); // Increased delay
         }
-
       } catch (e: any) {
         attempts++;
         console.error(`Error in fetchUserDetails (Attempt ${attempts}):`, e);
+        if(attempts >= maxAttempts) {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, delay * attempts));
       }
     }
     
     // --- WORKAROUND START ---
-    // If Firestore fails after all attempts, fallback to mock data to allow app to function.
-    console.warn("CRITICAL: Firestore is inaccessible. Falling back to mock user data.");
+    // If Firestore is inaccessible after all attempts, fallback to mock data.
+    console.warn("CRITICAL: Firestore is inaccessible or permissions are wrong. Falling back to mock user data.");
     setError("فشل الاتصال بقاعدة البيانات. سيتم استخدام بيانات وهمية.");
     const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
     if (mockUser) {
+        console.log("Found mock user data as a fallback:", mockUser.name);
         return {
             uid: firebaseUser.uid,
             ...mockUser,
@@ -120,6 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
+      // Let onAuthStateChanged handle the rest.
       return true;
     } catch (error) {
       const authError = error as AuthError;
