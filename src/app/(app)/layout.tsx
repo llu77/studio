@@ -10,6 +10,9 @@ import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
 import { Expense } from "./expenses/page";
+// NEW FEATURE: Import firestore functions for real-time sync
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 const initialUsers = [
@@ -35,53 +38,6 @@ export type User = typeof initialUsers[0];
 export type Role = 'مدير النظام' | 'مشرف فرع' | 'موظف' | 'شريك';
 export type Branch = 'كافة الفروع' | 'فرع لبن' | 'فرع طويق' | 'غير محدد';
 
-
-// --- Mock Data ---
-const initialRevenueData: RevenueRecord[] = [
-  {
-    id: "REV001",
-    date: "2024-07-28",
-    totalRevenue: 3250,
-    cash: 1250,
-    card: 2000,
-    distribution: [
-      { employeeName: "محمود عماره", amount: 1600 },
-      { employeeName: "علاء ناصر", amount: 1650 },
-    ],
-    status: "Matched",
-  },
-  {
-    id: "REV002",
-    date: "2024-07-27",
-    totalRevenue: 2900,
-    cash: 900,
-    card: 2000,
-    distribution: [
-      { employeeName: "عبدالحي", amount: 2900 },
-    ],
-    status: "Matched",
-  },
-   {
-    id: "REV003",
-    date: "2024-07-26",
-    totalRevenue: 1800,
-    cash: 800,
-    card: 1050,
-    distribution: [
-      { employeeName: "السيد", amount: 1800 },
-    ],
-    status: "Discrepancy",
-    discrepancyReason: "زيادة 50 ريال في صندوق الشبكة."
-  },
-];
-
-const initialExpensesData: Expense[] = [
-    { id: 'EXP001', date: '2024-07-28', branch: 'فرع لبن', category: 'فواتير', amount: 450.00, description: 'فاتورة كهرباء شهر يوليو' },
-    { id: 'EXP002', date: '2024-07-27', branch: 'فرع طويق', category: 'صيانة', amount: 1200.00, description: 'إصلاح مكيف الهواء' },
-    { id: 'EXP003', date: '2024-07-25', branch: 'فرع لبن', category: 'مستلزمات تشغيلية', amount: 350.00, description: 'شراء مواد تنظيف' },
-];
-
-
 // --- Contexts ---
 export const BranchContext = React.createContext<{
   currentBranch: string;
@@ -105,30 +61,69 @@ export const UserContext = React.createContext<{
 // NEW: Centralized Data Context
 export const DataContext = React.createContext<{
     revenueRecords: RevenueRecord[];
-    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>) => void;
-    deleteRevenueRecord: (id: string) => void;
+    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>) => Promise<void>;
+    deleteRevenueRecord: (id: string) => Promise<void>;
     expenses: Expense[];
-    addExpense: (expense: Omit<Expense, 'id'>) => void;
-    deleteExpense: (id: string) => void;
+    addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+    deleteExpense: (id: string) => Promise<void>;
+    loadingData: boolean; // NEW FEATURE: Add loading state
 }>({
     revenueRecords: [],
-    addRevenueRecord: () => {},
-    deleteRevenueRecord: () => {},
+    addRevenueRecord: async () => {},
+    deleteRevenueRecord: async () => {},
     expenses: [],
-    addExpense: () => {},
-    deleteExpense: () => {},
+    addExpense: async () => {},
+    deleteExpense: async () => {},
+    loadingData: true, // NEW FEATURE: Default to true
 });
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [currentBranch, setCurrentBranch] = useState('laban');
   const [users, setUsers] = useState<User[]>(initialUsers);
 
   // --- Centralized State ---
-  const [revenueRecords, setRevenueRecords] = useState<RevenueRecord[]>(initialRevenueData);
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpensesData);
+  const [revenueRecords, setRevenueRecords] = useState<RevenueRecord[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  // NEW FEATURE: Add loading state for data fetching
+  const [loadingData, setLoadingData] = useState(true);
+
+
+  // NEW FEATURE: Real-time data fetching from Firestore
+  useEffect(() => {
+    setLoadingData(true);
+    // Listener for Revenue Records
+    const revenueQuery = query(collection(db, 'revenue'), orderBy('date', 'desc'));
+    const unsubscribeRevenue = onSnapshot(revenueQuery, (snapshot) => {
+        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RevenueRecord));
+        setRevenueRecords(records);
+        setLoadingData(false);
+    }, (error) => {
+        console.error("Error fetching revenue records: ", error);
+        setLoadingData(false);
+    });
+
+    // Listener for Expenses
+    const expensesQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const unsubscribeExpenses = onSnapshot(expensesQuery, (snapshot) => {
+        const expenseRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+        setExpenses(expenseRecords);
+        setLoadingData(false);
+    }, (error) => {
+        console.error("Error fetching expenses: ", error);
+        setLoadingData(false);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+        unsubscribeRevenue();
+        unsubscribeExpenses();
+    };
+  }, []);
+
+
 
   const addUser = (user: User) => {
     setUsers(prevUsers => [user, ...prevUsers]);
@@ -138,7 +133,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
   };
 
-  const addRevenueRecord = (record: Omit<RevenueRecord, 'id' | 'status'>) => {
+  // NEW FEATURE: Modified to write to Firestore
+  const addRevenueRecord = async (record: Omit<RevenueRecord, 'id' | 'status'>) => {
     const isMismatched = Math.abs((record.cash + record.card) - record.totalRevenue) > 0.01;
     const distributedTotal = record.distribution.reduce((acc, dist) => acc + (dist.amount || 0), 0);
     const isDistributionUnbalanced = Math.abs(distributedTotal - record.totalRevenue) > 0.01;
@@ -150,38 +146,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       status = 'Discrepancy';
     }
 
-    const newRecord: RevenueRecord = {
-      id: `REV${String(revenueRecords.length + 1).padStart(3, '0')}`,
-      ...record,
-      status,
-    };
-    setRevenueRecords(prev => [newRecord, ...prev]);
+    const newRecord = { ...record, status };
+    await addDoc(collection(db, 'revenue'), newRecord);
   };
   
-  const deleteRevenueRecord = (id: string) => {
-    setRevenueRecords(prev => prev.filter(record => record.id !== id));
+  // NEW FEATURE: Modified to delete from Firestore
+  const deleteRevenueRecord = async (id: string) => {
+    await deleteDoc(doc(db, 'revenue', id));
   };
   
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense: Expense = {
-        id: `EXP${String(expenses.length + 1).padStart(3, '0')}`,
-        ...expense
-    };
-    setExpenses(prev => [newExpense, ...prev]);
+  // NEW FEATURE: Modified to write to Firestore
+  const addExpense = async (expense: Omit<Expense, 'id'>) => {
+    await addDoc(collection(db, 'expenses'), expense);
   }
 
-  const deleteExpense = (id: string) => {
-    setExpenses(prev => prev.filter(exp => exp.id !== id));
+  // NEW FEATURE: Modified to delete from Firestore
+  const deleteExpense = async (id: string) => {
+    await deleteDoc(doc(db, 'expenses', id));
   }
 
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
-  if (loading || !user) {
+  const isLoading = authLoading || loadingData;
+
+  if (isLoading || !user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
@@ -195,7 +188,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <UserContext.Provider value={{ users, addUser, deleteUser }}>
         <BranchContext.Provider value={{ currentBranch, setCurrentBranch }}>
-          <DataContext.Provider value={{ revenueRecords, addRevenueRecord, deleteRevenueRecord, expenses, addExpense, deleteExpense }}>
+          <DataContext.Provider value={{ revenueRecords, addRevenueRecord, deleteRevenueRecord, expenses, addExpense, deleteExpense, loadingData }}>
               <SidebarProvider>
                   <AppSidebarContent />
                   <SidebarInset>
