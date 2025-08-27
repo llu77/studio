@@ -53,6 +53,16 @@ const mockSalaries: SalaryRecord[] = [
     { id: 5, date: '2024-08-31', employeeId: 'USR005', employeeName: 'فاطمة محمد', branch: 'فرع لبن', basicSalary: 4300, deductions: 0, bonuses: 150, netSalary: 4450, status: 'pending', createdBy: 'مشرف فرع', createdAt: '2024-08-29' },
 ];
 
+const getStatusText = (status: SalaryStatus) => {
+    switch (status) {
+      case 'pending': return 'قيد الانتظار'
+      case 'approved': return 'موافق عليه'
+      case 'paid': return 'مدفوع'
+      case 'rejected': return 'مرفوض'
+      default: return status
+    }
+}
+
 const PrintableSalaryReport = ({ records, title }: { records: SalaryRecord[], title: string }) => (
     <div className="p-8">
         <div className="text-center mb-6">
@@ -87,15 +97,6 @@ const PrintableSalaryReport = ({ records, title }: { records: SalaryRecord[], ti
 );
 
 
-const getStatusText = (status: SalaryStatus) => {
-    switch (status) {
-      case 'pending': return 'قيد الانتظار'
-      case 'approved': return 'موافق عليه'
-      case 'paid': return 'مدفوع'
-      case 'rejected': return 'مرفوض'
-      default: return status
-    }
-}
 
 export default function Salaries() {
   const [salaries, setSalaries] = useState<SalaryRecord[]>(mockSalaries)
@@ -132,10 +133,11 @@ export default function Salaries() {
     if (name === 'employeeId') {
       const employee = employees.find(emp => emp.id === value)
       if (employee) {
+        // In a real app, base salary would come from employee data
         setFormData(prev => ({
           ...prev,
           employeeId: value,
-          basicSalary: '4000' // Default basic salary
+          basicSalary: '4000' 
         }))
       }
     }
@@ -150,6 +152,14 @@ export default function Salaries() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if(!formData.employeeId || !formData.basicSalary) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'الرجاء اختيار الموظف والتأكد من إدخال الراتب الأساسي.'
+      })
+      return;
+    }
     
     setSubmitting(true)
     const newSalary: SalaryRecord = {
@@ -163,7 +173,7 @@ export default function Salaries() {
         bonuses: parseFloat(formData.bonuses) || 0,
         netSalary: calculateNetSalary(),
         status: 'pending',
-        createdBy: 'المدير الحالي',
+        createdBy: 'المدير الحالي', // Should be dynamic in a real app
         createdAt: new Date().toISOString()
     };
     setSalaries(prev => [newSalary, ...prev]);
@@ -183,6 +193,7 @@ export default function Salaries() {
   }
 
   const handleBulkStatusChange = (newStatus: SalaryStatus) => {
+    if(selectedRows.length === 0) return;
     setSalaries(salaries.map(salary => 
       selectedRows.includes(salary.id) ? { ...salary, status: newStatus } : salary
     ));
@@ -201,6 +212,14 @@ export default function Salaries() {
      const recordsToPrint = selectedRows.length > 0 
         ? salaries.filter(s => selectedRows.includes(s.id))
         : salaries;
+    if (recordsToPrint.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'لا يوجد شيء للطباعة',
+        description: 'الرجاء تحديد سجلات أولاً أو التأكد من وجود سجلات لعرضها.'
+      });
+      return;
+    }
      setPrintableReportData({ records: recordsToPrint, title: 'تقرير مسير الرواتب الشامل' });
   }
 
