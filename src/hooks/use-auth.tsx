@@ -2,13 +2,20 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  setPersistence, 
+  browserSessionPersistence, 
+  createUserWithEmailAndPassword,
+  type AuthError
+} from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import type { AuthError } from 'firebase/auth';
 import { initialUsers } from '@/app/(app)/layout';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
-
 
 interface UserData {
   uid: string;
@@ -34,8 +41,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +56,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
-              setUserDetails({ id: userDoc.id, ...userDoc.data() } as UserData);
+              const userData = userDoc.data() as UserData;
+              setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+              setUserDetails({ id: userDoc.id, ...userData });
             } else {
                 const appUser = initialUsers.find(u => u.email === user.email);
                 if (appUser) {
@@ -58,27 +66,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     delete (newUserData as any).id;
                     await setDoc(userDocRef, newUserData);
                     setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
-                } else {
-                    // This case is for users that might exist in Auth but not in our initialUsers list.
-                    // We create a default user profile for them.
-                     const newDefaultUserData = {
-                        uid: user.uid,
-                        email: user.email,
-                        name: user.displayName || user.email.split('@')[0],
-                        role: 'موظف',
-                        branch: 'فرع لبن',
-                        createdAt: serverTimestamp(),
-                        lastLogin: serverTimestamp(),
-                        isActive: true
-                     } as UserData;
-                     await setDoc(userDocRef, newDefaultUserData);
-                     setUserDetails({ id: userDocRef.id, ...newDefaultUserData});
                 }
             }
         } catch (error) {
             console.error("Error fetching/creating user document:", error);
             setError("Error fetching user data. Permissions might be incorrect.");
-            await signOut(auth);
+            await signOut(auth); // Sign out if user data is inaccessible
             setUser(null);
             setUserDetails(null);
         }
@@ -95,19 +88,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     try {
         await setPersistence(auth, browserSessionPersistence);
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-        return userCredential.user;
+        return await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
         const authError = error as AuthError;
         if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
             const appUser = initialUsers.find(u => u.email === email);
             if (appUser) {
                 try {
-                    const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    // The onAuthStateChanged listener will handle setting the userDoc.
-                    return newUserCredential.user;
+                    // This will trigger onAuthStateChanged, which will handle doc creation.
+                    return (await createUserWithEmailAndPassword(auth, email, password)).user;
                 } catch (createError: any) {
                     console.error("User Creation Error:", createError);
                     setError(createError.message);
@@ -148,7 +137,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-interface AuthProviderProps {
-  children: ReactNode;
-}

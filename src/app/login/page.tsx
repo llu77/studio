@@ -16,30 +16,10 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading, error: authError, clearError, userDetails } = useAuth();
+  const { user, login, loading: authLoading, error: authError, clearError, userDetails } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
-  
-  const [attempts, setAttempts] = useState(0);
-  const [locked, setLocked] = useState(false);
-
-  useEffect(() => {
-    const lockTime = localStorage.getItem('lockTime');
-    if (lockTime) {
-      const timePassed = Date.now() - parseInt(lockTime);
-      if (timePassed < 30 * 60 * 1000) { // 30 minutes lock
-        setLocked(true);
-        const timeLeft = 30 * 60 * 1000 - timePassed;
-        setTimeout(() => {
-          setLocked(false);
-          localStorage.removeItem('lockTime');
-        }, timeLeft);
-      } else {
-        localStorage.removeItem('lockTime');
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (user && userDetails) {
@@ -50,20 +30,9 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    
-    if (locked) {
-        toast({
-            variant: "destructive",
-            title: "الحساب مقفل",
-            description: "تم تجاوز عدد المحاولات. حاول بعد 30 دقيقة.",
-        });
-        return;
-    }
 
     try {
       await login(email, password);
-      
-      setAttempts(0);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -73,28 +42,13 @@ export default function LoginPage() {
       router.push("/");
 
     } catch (err: any) {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        if (newAttempts >= 5) {
-            setLocked(true);
-            localStorage.setItem('lockTime', Date.now().toString());
-            toast({
-                variant: "destructive",
-                title: "الحساب مقفل",
-                description: "تم تجاوز عدد المحاولات المسموح. الحساب مقفل لمدة 30 دقيقة.",
-            });
-            setTimeout(() => {
-              setLocked(false);
-              setAttempts(0);
-              localStorage.removeItem('lockTime');
-            }, 30 * 60 * 1000);
-        } else {
-             toast({
-                variant: "destructive",
-                title: "خطأ في تسجيل الدخول",
-                description: `بيانات غير صحيحة. (المحاولات المتبقية: ${5 - newAttempts})`,
-            });
-        }
+        // The error is already set in the auth context,
+        // so we just show a generic toast.
+         toast({
+            variant: "destructive",
+            title: "خطأ في تسجيل الدخول",
+            description: authError || "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
+        });
     }
   };
 
@@ -128,7 +82,7 @@ export default function LoginPage() {
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading || locked}
+                disabled={authLoading}
                 />
             </div>
             <div className="space-y-2">
@@ -139,11 +93,11 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading || locked}
+                disabled={authLoading}
                 />
             </div>
-            <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={loading || locked}>
-              {loading ? <Loader2 className="animate-spin" /> : locked ? 'الحساب مقفل' : 'تسجيل الدخول'}
+            <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={authLoading}>
+              {authLoading ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </Button>
           </form>
         </CardContent>
