@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext, User, Role } from "@/app/(app)/layout";
 import ResignationForm from "./ResignationForm"; 
 import { useAuth } from "@/hooks/use-auth";
-import pdfService from "@/services/pdf.service";
+import pdfService from '@/services/pdf.service';
 
 
 const initialRequests = [
@@ -235,6 +235,41 @@ export default function EmployeeRequestsPage() {
         pdfService.print();
     };
 
+    // NEW FEATURE: Print all visible requests
+    const handlePrintAllRequests = async () => {
+        if (visibleRequests.length === 0) {
+            toast({ variant: 'destructive', title: 'لا توجد طلبات للطباعة' });
+            return;
+        }
+
+        const tableData = visibleRequests.map(req => [
+            getRequestTypeName(req.type),
+            req.employee,
+            req.employeeBranch,
+            new Date(req.date).toLocaleDateString('ar-SA'),
+            statusMap[req.status].text
+        ]);
+
+        const supervisor = users.find(u => u.branch === currentUser?.branch && u.role === 'مشرف فرع');
+        
+        await pdfService.generatePDF({
+            title: 'تقرير الطلبات',
+            type: 'report',
+            content: {
+                table: {
+                    headers: [['نوع الطلب', 'الموظف', 'الفرع', 'التاريخ', 'الحالة']],
+                    data: tableData
+                }
+            },
+            userData: currentUser,
+            branchData: {
+                name: currentUser?.branch,
+                supervisorName: supervisor?.name || 'الإدارة'
+            }
+        });
+        await pdfService.print();
+    };
+
   return (
     <>
       <div className="non-printable">
@@ -317,11 +352,18 @@ export default function EmployeeRequestsPage() {
                             <CardTitle>إدارة طلبات الموظفين</CardTitle>
                             <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
                         </div>
-                        <div className="filters flex gap-2 overflow-x-auto pb-2">
-                            <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
-                            <Button variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
-                            <Button variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
-                            <Button variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
+                         {/* NEW FEATURE: Filter buttons and Print all button */}
+                        <div className="flex items-center gap-2">
+                            <div className="filters flex gap-2 overflow-x-auto pb-2">
+                                <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
+                                <Button size="sm" variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
+                                <Button size="sm" variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
+                                <Button size="sm" variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={handlePrintAllRequests}>
+                                <Printer className="ml-2 h-4 w-4" />
+                                طباعة
+                            </Button>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -335,7 +377,7 @@ export default function EmployeeRequestsPage() {
                                         <div>
                                             <h3 className="text-lg font-semibold">{getRequestTypeName(req.type)}</h3>
                                             <p className="text-sm text-muted-foreground">لـ: {req.employee} ({req.employeeBranch})</p>
-                                            <p className="text-xs text-muted-foreground">بتاريخ: {req.date}</p>
+                                            <p className="text-xs text-muted-foreground">بتاريخ: {new Date(req.date).toLocaleDateString('ar-SA')}</p>
                                         </div>
                                         <Badge variant={statusInfo.variant} className="gap-1">
                                             <StatusIcon className="h-3 w-3" />
