@@ -1,4 +1,4 @@
-
+// NEW FEATURE: Integration of ResignationForm
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import React, { useState, useContext, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
+import ResignationForm from "./ResignationForm"; // NEW FEATURE: Import ResignationForm
 
 const initialRequests = [
     { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
@@ -85,6 +86,26 @@ export default function EmployeeRequestsPage() {
     const approvedRequests = useMemo(() => {
         return requests.filter(req => req.status === 'approved');
     }, [requests]);
+
+    const handleFormSubmit = (newRequestData: any) => {
+        const employeeDetails = users.find(u => u.id === selectedEmployeeId);
+         if(!employeeDetails) return;
+
+         const newRequest: EmployeeRequest = {
+            id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
+            date: new Date().toISOString().split('T')[0],
+            employee: employeeDetails.name,
+            employeeBranch: employeeDetails.branch,
+            ...newRequestData
+        };
+
+        setRequests([newRequest, ...requests]);
+         toast({
+            title: "تم إرسال الطلب بنجاح",
+            description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
+            className: "bg-primary text-primary-foreground",
+        });
+    };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
@@ -169,11 +190,29 @@ export default function EmployeeRequestsPage() {
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
                     <CardTitle>تقديم طلب موظف جديد</CardTitle>
-                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين (سلفة, إجازة, إلخ).</CardDescription>
+                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين (استقالة, سلفة, إجازة, إلخ).</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmitRequest} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2 mb-6">
+                            <Label htmlFor="request-type">نوع الطلب</Label>
+                            <Select value={requestType} onValueChange={setRequestType}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر نوع الطلب" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="resignation">طلب استقالة</SelectItem>
+                                    <SelectItem value="advance">سلفة</SelectItem>
+                                    <SelectItem value="leave">إجازة</SelectItem>
+                                    <SelectItem value="other">طلب آخر</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        {/* NEW FEATURE: Render ResignationForm or other forms based on selection */}
+                        {requestType === 'resignation' ? (
+                            <ResignationForm onSubmit={handleFormSubmit} />
+                        ) : requestType !== '' ? (
+                           <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="employee-name">اسم الموظف</Label>
                                     <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
@@ -188,32 +227,19 @@ export default function EmployeeRequestsPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="request-type">نوع الطلب</Label>
-                                    <Select value={requestType} onValueChange={setRequestType}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="اختر نوع الطلب" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="سلفة">سلفة</SelectItem>
-                                            <SelectItem value="إجازة">إجازة</SelectItem>
-                                            <SelectItem value="طلب آخر">طلب آخر</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label htmlFor="request-details">تفاصيل الطلب</Label>
+                                    <Textarea 
+                                        id="request-details" 
+                                        placeholder="اكتب تفاصيل الطلب هنا..." 
+                                        value={requestDetails}
+                                        onChange={(e) => setRequestDetails(e.target.value)}
+                                    />
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="request-details">تفاصيل الطلب (المبلغ، مدة الإجازة، إلخ)</Label>
-                                <Textarea 
-                                    id="request-details" 
-                                    placeholder="مثال: سلفة بقيمة 500 ريال، أو إجازة لمدة 5 أيام" 
-                                    value={requestDetails}
-                                    onChange={(e) => setRequestDetails(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex justify-end pt-4">
-                                <Button type="submit" size="lg">إرسال الطلب</Button>
-                            </div>
-                        </form>
+                                <div className="flex justify-end pt-4">
+                                    <Button type="submit" size="lg">إرسال الطلب</Button>
+                                </div>
+                            </form>
+                        ) : null}
                     </CardContent>
                 </Card>
             </TabsContent>
