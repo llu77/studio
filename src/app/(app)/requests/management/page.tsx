@@ -1,118 +1,117 @@
+
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent as UiSidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  SidebarSeparator
-} from "@/components/ui/sidebar";
-import { Logo } from "@/components/logo";
-import {
-  LayoutDashboard,
-  TrendingUp,
-  TrendingDown,
-  Award,
-  FileText,
-  ShoppingBasket,
-  Users,
-  BarChart3,
-  Settings,
-  LogOut,
-  WalletCards,
-  BrainCircuit,
-  ClipboardList, // NEW ICON
-  Briefcase, // NEW ICON
-} from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Check, X, Clock, Printer } from "lucide-react";
+import React, { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
-const menuItems = [
-  { href: "/", label: "لوحة التحكم", icon: LayoutDashboard, roles: ['مدير النظام', 'مشرف فرع', 'موظف', 'شريك'] },
-  { href: "/revenue", label: "الإيرادات", icon: TrendingUp, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
-  { href: "/expenses", label: "المصاريف", icon: TrendingDown, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
-  { href: "/bonuses", label: "البونص", icon: Award, roles: ['مدير النظام', 'مشرف فرع'] },
-  { href: "/requests/employees", label: "طلبات الموظفين", icon: Briefcase, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
-  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket, roles: ['مدير النظام', 'مشرف فرع'] },
-  { href: "/users", label: "إدارة المستخدمين", icon: Users, roles: ['مدير النظام'] },
-  { href: "/salaries", label: "الرواتب", icon: WalletCards, roles: ['مدير النظام', 'مشرف فرع'] },
-  { href: "/reports", label: "التقارير", icon: BarChart3, roles: ['مدير النظام', 'شريك'] },
-  { href: "/accounting-intelligence", label: "الذكاء المحاسبي", icon: BrainCircuit, roles: ['مدير النظام', 'شريك'] },
-  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ['مدير النظام'] },
+type RequestStatus = 'pending' | 'approved' | 'rejected';
+
+type EmployeeRequest = {
+    id: string;
+    date: string;
+    employee: string;
+    type: string;
+    details: string;
+    status: RequestStatus;
+};
+
+const initialRequests: EmployeeRequest[] = [
+    { id: 'REQ001', date: '2024-05-20', employee: 'محمود عماره', type: 'سلفة', details: 'سلفة بقيمة 500 ريال لأمر طارئ', status: 'approved' },
+    { id: 'REQ002', date: '2024-05-18', employee: 'محمد إسماعيل', type: 'إجازة', details: 'طلب إجازة لمدة 3 أيام للسفر', status: 'pending' },
+    { id: 'REQ003', date: '2024-05-15', employee: 'عبدالحي', type: 'مستلزمات', details: 'طلب شراء أدوات نظافة جديدة للفرع', status: 'rejected' },
+    { id: 'REQ004', date: '2024-05-21', employee: 'علاء ناصر', type: 'استقالة', details: 'طلب استقالة نهائية من العمل', status: 'pending' },
 ];
 
-export function AppSidebarContent() {
-  const pathname = usePathname();
-  const { user, userDetails, logout } = useAuth(); // Use userDetails
-  const router = useRouter();
+const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" | "default" | "destructive"; icon: React.ElementType } } = {
+    pending: { text: "قيد المراجعة", variant: "secondary", icon: Clock },
+    approved: { text: "تمت الموافقة", variant: "default", icon: Check },
+    rejected: { text: "تم الرفض", variant: "destructive", icon: X },
+};
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
+export default function RequestManagementPage() {
+    const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
+    const [filter, setFilter] = useState('all');
+    const { toast } = useToast();
 
-  const userRole = userDetails?.role;
+    const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
+        setRequests(prevRequests =>
+            prevRequests.map(req =>
+                req.id === requestId ? { ...req, status: newStatus } : req
+            )
+        );
+        toast({
+            title: `تم تحديث حالة الطلب بنجاح`,
+            description: `تم ${newStatus === 'approved' ? 'الموافقة على' : 'رفض'} الطلب رقم ${requestId}.`
+        });
+    };
 
-  const accessibleMenuItems = menuItems.filter(item => {
-    if (!userRole) return false;
-    // Special case for requests to show a single unified link
-    if (item.href === '/requests/employees') {
-        return item.roles.includes(userRole);
-    }
-    // Hide the old management link
-    if (item.href === '/requests/management') {
-        return false;
-    }
-    return item.roles.includes(userRole);
-  });
-  
-  // Remove duplicates that might arise from the logic above
-  const uniqueMenuItems = accessibleMenuItems.filter((item, index, self) =>
-    index === self.findIndex((t) => (
-      t.href === item.href
-    ))
-  );
+    const filteredRequests = filter === 'all'
+        ? requests
+        : requests.filter(req => req.status === filter);
 
-
-  return (
-    <Sidebar side="right" variant="sidebar" collapsible="icon">
-      <div className="flex h-full flex-col">
-        <SidebarHeader className="p-4">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-                <Logo className="group-data-[collapsible=icon]:hidden" />
-            </Link>
-        </SidebarHeader>
-        <UiSidebarContent>
-          <SidebarMenu>
-            {uniqueMenuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/')}
-                  tooltip={item.label}
-                >
-                  <Link href={item.href}>
-                      <item.icon className="ml-2" />
-                      <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </UiSidebarContent>
-        <SidebarFooter className="p-4">
-            <SidebarSeparator />
-             <div className="mt-2 text-center text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                <p>&copy; 2024 BranchFlow</p>
-                <p>كل الحقوق محفوظة</p>
-            </div>
-        </SidebarFooter>
-      </div>
-    </Sidebar>
-  );
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <CardTitle>إدارة طلبات الموظفين</CardTitle>
+                        <CardDescription>مراجعة طلبات الموظفين والموافقة عليها أو رفضها.</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
+                        <Button variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
+                        <Button variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
+                        <Button variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>الموظف</TableHead>
+                            <TableHead>التاريخ</TableHead>
+                            <TableHead>النوع</TableHead>
+                            <TableHead>التفاصيل</TableHead>
+                            <TableHead>الحالة</TableHead>
+                            <TableHead>الإجراء</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredRequests.map((req) => {
+                            const statusInfo = statusMap[req.status];
+                            const StatusIcon = statusInfo.icon;
+                            return (
+                                <TableRow key={req.id}>
+                                    <TableCell>{req.employee}</TableCell>
+                                    <TableCell>{req.date}</TableCell>
+                                    <TableCell>{req.type}</TableCell>
+                                    <TableCell>{req.details}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={statusInfo.variant} className="gap-1">
+                                            <StatusIcon className="h-3 w-3" />
+                                            {statusInfo.text}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        {req.status === 'pending' && (
+                                            <div className="flex gap-2">
+                                                <Button size="sm" onClick={() => handleStatusUpdate(req.id, 'approved')} className="bg-green-600 hover:bg-green-700"><Check className="h-4 w-4" /></Button>
+                                                <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
 }
