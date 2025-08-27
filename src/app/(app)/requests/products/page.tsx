@@ -10,66 +10,65 @@ import React, { useState, useMemo, useContext, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
 import { useAuth } from "@/hooks/use-auth";
-import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 
 // --- Data ---
 const initialProducts = [
-    { id: 'PROD01', name: 'ماسك شعر كيراتين بروتين 1000مل', price: 35, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD02', name: 'كريم بعد الحلاقة 400مل', price: 20, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD03', name: 'قطن', price: 3, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD04', name: 'بلاديكس أمواس أزرق', price: 24, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD05', name: 'مناشف استخدام مره واحده 50*100', price: 21, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD06', name: 'واكس سيستم أعود خشبيه 50حبه', price: 3, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD07', name: 'أعواد قطن أزرق', price: 4, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD08', name: 'فاتيكا كريم شعر', price: 5, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD09', name: 'فرشة شعر', price: 10, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD10', name: 'شمع بابلو أسود أو أزرق', price: 41, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD11', name: 'مريله بلاستك اصفر', price: 41, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD12', name: 'بلاتينا منادیل ورقيه', price: 35, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD13', name: 'ورق رقبه', price: 10, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD14', name: 'كمامه وجه اسود', price: 2, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD15', name: 'قفازات فينيل بدون بودره اسود', price: 9, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD16', name: 'ليمون للوجه', price: 3, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD17', name: 'صبغة شعر بني غامق', price: 12, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD18', name: 'صبغة دقن اسود', price: 15, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD19', name: 'حنة شعر اسود', price: 4, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD20', name: 'لاصق انف', price: 5, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD21', name: 'كريم أطراف شعر بعد الحلاقة', price: 5, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD22', name: 'مناشف منعشه 25', price: 12, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD23', name: 'جل حلاقة 1 لتر', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD24', name: 'قناع طين', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD25', name: 'قناع فحم', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD26', name: 'صنفره وجه بالنعناع', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD27', name: 'صنفره وجه بالقهوه', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD28', name: 'صنفره وجه الخيار', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD29', name: 'صنفره وجه', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD30', name: 'اكياس نفايات اسود 60 جالون', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD31', name: 'اكياس نفايات اصفر 8/10 جالون', price: 7, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD32', name: 'مكنسه للارضيات', price: 15, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD33', name: 'مساحه بلاط/ارضيات', price: 25, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD34', name: 'ديتول للارضيات', price: 15, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD35', name: 'ملمع بلاط', price: 15, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD36', name: 'بخاخ تنظيف زجاج', price: 11, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD37', name: 'معطر جو 500 مل', price: 150, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD38', name: 'كلونيا', price: 2, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD39', name: 'شفاء كرات قطن', price: 3, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD40', name: 'سفنج لتنظيف البشرة 12حبه', price: 9, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD41', name: 'واكس للشعر بلمز او شمع', price: 27, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD42', name: 'منادیل رول نظافه', price: 8, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD43', name: 'منادیل بلاتينا 600 حبه', price: 34, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD44', name: 'فرشه استشوار', price: 15, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD45', name: 'مقص مقاس 6', price: 20, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD46', name: 'مقص مقاس 5.5', price: 20, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD47', name: 'كمامات', price: 7, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD48', name: 'مريله أصغر * كرتون', price: 20, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD49', name: 'لمبه جهاز تعقيم', price: 20, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD50', name: 'بروتين للشعر', price: 350, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD51', name: 'ماكينه تنعيم', price: 50, image: '/images/product-placeholder.png', category: 'متنوعات' },
-    { id: 'PROD52', name: 'شامبو فاتيكا 600 مل', price: 16, image: '/images/product-placeholder.png', category: 'متنوعات' }
+    { id: 'PROD01', name: 'ماسك شعر كيراتين بروتين 1000مل', price: 35, category: 'متنوعات' },
+    { id: 'PROD02', name: 'كريم بعد الحلاقة 400مل', price: 20, category: 'متنوعات' },
+    { id: 'PROD03', name: 'قطن', price: 3, category: 'متنوعات' },
+    { id: 'PROD04', name: 'بلاديكس أمواس أزرق', price: 24, category: 'متنوعات' },
+    { id: 'PROD05', name: 'مناشف استخدام مره واحده 50*100', price: 21, category: 'متنوعات' },
+    { id: 'PROD06', name: 'واكس سيستم أعود خشبيه 50حبه', price: 3, category: 'متنوعات' },
+    { id: 'PROD07', name: 'أعواد قطن أزرق', price: 4, category: 'متنوعات' },
+    { id: 'PROD08', name: 'فاتيكا كريم شعر', price: 5, category: 'متنوعات' },
+    { id: 'PROD09', name: 'فرشة شعر', price: 10, category: 'متنوعات' },
+    { id: 'PROD10', name: 'شمع بابلو أسود أو أزرق', price: 41, category: 'متنوعات' },
+    { id: 'PROD11', name: 'مريله بلاستك اصفر', price: 41, category: 'متنوعات' },
+    { id: 'PROD12', name: 'بلاتينا منادیل ورقيه', price: 35, category: 'متنوعات' },
+    { id: 'PROD13', name: 'ورق رقبه', price: 10, category: 'متنوعات' },
+    { id: 'PROD14', name: 'كمامه وجه اسود', price: 2, category: 'متنوعات' },
+    { id: 'PROD15', name: 'قفازات فينيل بدون بودره اسود', price: 9, category: 'متنوعات' },
+    { id: 'PROD16', name: 'ليمون للوجه', price: 3, category: 'متنوعات' },
+    { id: 'PROD17', name: 'صبغة شعر بني غامق', price: 12, category: 'متنوعات' },
+    { id: 'PROD18', name: 'صبغة دقن اسود', price: 15, category: 'متنوعات' },
+    { id: 'PROD19', name: 'حنة شعر اسود', price: 4, category: 'متنوعات' },
+    { id: 'PROD20', name: 'لاصق انف', price: 5, category: 'متنوعات' },
+    { id: 'PROD21', name: 'كريم أطراف شعر بعد الحلاقة', price: 5, category: 'متنوعات' },
+    { id: 'PROD22', name: 'مناشف منعشه 25', price: 12, category: 'متنوعات' },
+    { id: 'PROD23', name: 'جل حلاقة 1 لتر', price: 11, category: 'متنوعات' },
+    { id: 'PROD24', name: 'قناع طين', price: 11, category: 'متنوعات' },
+    { id: 'PROD25', name: 'قناع فحم', price: 11, category: 'متنوعات' },
+    { id: 'PROD26', name: 'صنفره وجه بالنعناع', price: 11, category: 'متنوعات' },
+    { id: 'PROD27', name: 'صنفره وجه بالقهوه', price: 11, category: 'متنوعات' },
+    { id: 'PROD28', name: 'صنفره وجه الخيار', price: 11, category: 'متنوعات' },
+    { id: 'PROD29', name: 'صنفره وجه', price: 11, category: 'متنوعات' },
+    { id: 'PROD30', name: 'اكياس نفايات اسود 60 جالون', price: 11, category: 'متنوعات' },
+    { id: 'PROD31', name: 'اكياس نفايات اصفر 8/10 جالون', price: 7, category: 'متنوعات' },
+    { id: 'PROD32', name: 'مكنسه للارضيات', price: 15, category: 'متنوعات' },
+    { id: 'PROD33', name: 'مساحه بلاط/ارضيات', price: 25, category: 'متنوعات' },
+    { id: 'PROD34', name: 'ديتول للارضيات', price: 15, category: 'متنوعات' },
+    { id: 'PROD35', name: 'ملمع بلاط', price: 15, category: 'متنوعات' },
+    { id: 'PROD36', name: 'بخاخ تنظيف زجاج', price: 11, category: 'متنوعات' },
+    { id: 'PROD37', name: 'معطر جو 500 مل', price: 150, category: 'متنوعات' },
+    { id: 'PROD38', name: 'كلونيا', price: 2, category: 'متنوعات' },
+    { id: 'PROD39', name: 'شفاء كرات قطن', price: 3, category: 'متنوعات' },
+    { id: 'PROD40', name: 'سفنج لتنظيف البشرة 12حبه', price: 9, category: 'متنوعات' },
+    { id: 'PROD41', name: 'واكس للشعر بلمز او شمع', price: 27, category: 'متنوعات' },
+    { id: 'PROD42', name: 'منادیل رول نظافه', price: 8, category: 'متنوعات' },
+    { id: 'PROD43', name: 'منادیل بلاتينا 600 حبه', price: 34, category: 'متنوعات' },
+    { id: 'PROD44', name: 'فرشه استشوار', price: 15, category: 'متنوعات' },
+    { id: 'PROD45', name: 'مقص مقاس 6', price: 20, category: 'متنوعات' },
+    { id: 'PROD46', name: 'مقص مقاس 5.5', price: 20, category: 'متنوعات' },
+    { id: 'PROD47', name: 'كمامات', price: 7, category: 'متنوعات' },
+    { id: 'PROD48', name: 'مريله أصغر * كرتون', price: 20, category: 'متنوعات' },
+    { id: 'PROD49', name: 'لمبه جهاز تعقيم', price: 20, category: 'متنوعات' },
+    { id: 'PROD50', name: 'بروتين للشعر', price: 350, category: 'متنوعات' },
+    { id: 'PROD51', name: 'ماكينه تنعيم', price: 50, category: 'متنوعات' },
+    { id: 'PROD52', name: 'شامبو فاتيكا 600 مل', price: 16, category: 'متنوعات' }
 ];
 
-type Product = typeof initialProducts[0];
+type Product = Omit<typeof initialProducts[0], 'image'>;
 type CartItem = {
     product: Product;
     quantity: number;
@@ -234,7 +233,6 @@ export default function ProductRequestsPage() {
                     <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto p-4">
                         {filteredProducts.map(product => (
                             <div key={product.id} className="flex items-center gap-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors">
-                                <Image data-ai-hint={`${product.category}`} src={`https://picsum.photos/seed/${product.id}/100/100`} alt={product.name} width={64} height={64} className="rounded-md object-cover" />
                                 <div className="flex-grow">
                                     <h4 className="font-semibold">{product.name}</h4>
                                     <p className="text-sm text-muted-foreground">{product.price.toFixed(2)} ريال</p>
