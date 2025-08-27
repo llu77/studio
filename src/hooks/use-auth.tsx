@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     let attempts = 0;
     const maxAttempts = 5;
-    const delay = 1000;
+    const delay = 1500; // Increased delay to give Cloud Function more time
 
     while(attempts < maxAttempts) {
       try {
@@ -65,30 +65,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (userDoc.exists()) {
           console.log("User document found in Firestore.");
           const userData = userDoc.data() as UserData;
-          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+          // Update last login time, but don't block for it
+          setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(e => console.warn("Failed to update last login:", e));
           return { ...userData, id: userDoc.id };
         } else {
            console.log("User document not found, waiting for Cloud Function to create it...");
            attempts++;
-           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay));
+           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * attempts)); // Exponential backoff
         }
 
       } catch (e: any) {
-        console.error(`Error in fetchUserDetails (Attempt ${attempts + 1}):`, e);
         attempts++;
-        if(attempts >= maxAttempts) {
-           setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
+        console.error(`Error in fetchUserDetails (Attempt ${attempts + 1}):`, e);
+        if (attempts >= maxAttempts) {
+           setError(`Error fetching user data after multiple attempts: ${e.message}. Please contact support.`);
            return null;
         }
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, delay * attempts));
       }
     }
     
-    setError("Failed to fetch user details after multiple attempts. The user document might not exist or there are persistent permission issues.");
-    // Fallback to mock data if all attempts fail, to allow UI to render
+    setError("Failed to fetch user details. The user document might not exist or there are persistent permission issues.");
+    // Fallback to mock data if all else fails to prevent a total crash
     const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
     if (mockUser) {
-        console.warn("Falling back to mock user data.");
+        console.warn("CRITICAL FALLBACK: Using mock user data as a last resort.");
         return {
             uid: firebaseUser.uid,
             ...mockUser,
@@ -100,22 +101,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
+      setError(null);
       if (firebaseUser) {
-          if (!userDetails || userDetails.uid !== firebaseUser.uid) {
-              setLoading(true);
-              const details = await fetchUserDetails(firebaseUser);
-              setUser(firebaseUser);
-              setUserDetails(details);
-              setLoading(false);
-          }
+          const details = await fetchUserDetails(firebaseUser);
+          setUser(firebaseUser);
+          setUserDetails(details);
       } else {
         setUser(null);
         setUserDetails(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [fetchUserDetails, userDetails]);
+  }, [fetchUserDetails]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -123,7 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest
+      // onAuthStateChanged will handle fetching user details.
       return true;
     } catch (error) {
       const authError = error as AuthError;
@@ -139,11 +138,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    setLoading(true);
     try {
       await signOut(auth);
+      setUser(null);
+      setUserDetails(null);
     } catch (e) {
       console.error("Logout Error:", e);
       setError((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 

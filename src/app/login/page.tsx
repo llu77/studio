@@ -16,35 +16,28 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading: authLoading, error: authError } = useAuth();
+  const { user, userDetails, login, loading, error: authError } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
 
   useEffect(() => {
-    if (user) {
+    if (user && userDetails) {
         router.push('/');
     }
-  }, [user, router]);
+  }, [user, userDetails, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const success = await login(email, password);
-    
     if (success) {
       toast({
         title: "تم تسجيل الدخول بنجاح",
         description: "مرحباً بعودتك! سيتم توجيهك الآن.",
       });
       // The useEffect hook will handle redirection once the user object is confirmed.
-    } else {
-       toast({
-        variant: "destructive",
-        title: "خطأ في تسجيل الدخول",
-        description: authError || "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
-      });
-    }
+    } 
+    // The useAuth hook will now set the error, so we don't need a separate toast here.
   };
 
   return (
@@ -77,7 +70,7 @@ export default function LoginPage() {
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={authLoading}
+                disabled={loading}
                 />
             </div>
             <div className="space-y-2">
@@ -88,11 +81,11 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={authLoading}
+                disabled={loading}
                 />
             </div>
-            <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={authLoading}>
-              {authLoading ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
+            <Button type="submit" className="w-full text-lg font-bold" size="lg" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </Button>
           </form>
         </CardContent>
