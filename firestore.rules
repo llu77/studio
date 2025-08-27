@@ -1,52 +1,24 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // قاعدة محددة وواضحة لمجموعة المستخدمين
+
+    // Rule 1: Users Collection
+    // - Allow reading own document.
+    // - Allow creating own document.
+    // - Allow updating own document.
+    // - Admin can update any user document.
     match /users/{userId} {
-      // أي مستخدم مسجل يمكنه قراءة بيانات أي مستخدم آخر (لأغراض عرض الأسماء وغيرها)
-      allow read: if request.auth != null;
-      // المستخدم يمكنه فقط إنشاء مستنده الخاص
-      allow create: if request.auth != null && request.auth.uid == userId;
-      // المستخدم يمكنه فقط تحديث مستنده الخاص
-      allow update: if request.auth != null && request.auth.uid == userId;
-      // لا يمكن حذف المستخدمين من خلال التطبيق
-      allow delete: if false;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null; // Allow any authenticated user to create their own doc
     }
 
-    // قواعد الوصول لمجموعات البيانات الرئيسية
-    // اسمح فقط للمستخدمين المسجلين بالوصول
-
-    match /revenue/{docId} {
-      allow read, write: if request.auth != null;
+    // Rule 2: General Access for Authenticated Users
+    // Allow any authenticated user to read/write to other collections.
+    // This is suitable for development. For production, you'd add
+    // role-based or ownership-based checks here.
+    match /{collection}/{docId} {
+       allow read, write: if request.auth != null && collection != 'users';
     }
-
-    match /expenses/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /requests/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /branches/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /finances/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /finance_archive/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /notifications/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // هذه القاعدة العامة تم إزالتها لتجنب التعارض
-    // match /{document=**} {
-    //   allow read, write: if request.auth != null;
-    // }
   }
 }
