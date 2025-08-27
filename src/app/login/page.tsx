@@ -29,7 +29,7 @@ const mockBranches = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading, userDetails } = useAuth();
+  const { user, login, loading, userDetails, logout } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
@@ -99,16 +99,21 @@ export default function LoginPage() {
     try {
       const loggedInUser = await login(email, password);
       
+      // Firestore logic requires UID, so we must wait for the user object.
+      // The onAuthStateChanged listener in useAuth handles fetching userDetails,
+      // but here we need it immediately for branch validation.
       const userDocRef = doc(db, "users", loggedInUser.uid);
       const userDoc = await getDoc(userDocRef);
+
       if (!userDoc.exists()) {
-          throw new Error("لم يتم العثور على بيانات المستخدم.");
+          await logout();
+          throw new Error("لم يتم العثور على بيانات المستخدم في قاعدة البيانات.");
       }
       const userData = userDoc.data();
       
       const userBranchId = userData.branch === 'فرع لبن' ? 'branch_laban' : userData.branch === 'فرع طويق' ? 'branch_tuwaiq' : 'all';
 
-      if (userBranchId !== branchId && userData.role !== 'مدير النظام' && userBranchId !== 'all') {
+      if (userBranchId !== 'all' && userData.role !== 'مدير النظام' && userBranchId !== branchId) {
           await logout();
           throw new Error('الفرع المختار غير صحيح لهذا الحساب.');
       }

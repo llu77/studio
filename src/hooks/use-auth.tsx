@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import type { Auth, AuthError } from 'firebase/auth';
+import type { AuthError } from 'firebase/auth';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
 
 interface AuthContextType {
