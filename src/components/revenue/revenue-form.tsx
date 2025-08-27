@@ -11,8 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, MinusCircle, PlusCircle, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { UserContext, BranchContext } from "@/app/(app)/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { RevenueRecord } from "./revenue-table";
@@ -49,12 +47,11 @@ const revenueFormSchema = z.object({
 type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 
 interface RevenueFormProps {
-    onSave: (data: Omit<RevenueRecord, 'id' | 'status' | 'branch'>, branch: string) => void;
+    onSave: (data: Omit<RevenueRecord, 'id' | 'status' | 'branch'>, branch: string) => Promise<boolean>;
 }
 
 
 export function RevenueForm({ onSave }: RevenueFormProps) {
-    const { toast } = useToast();
     const { users } = useContext(UserContext);
     const { currentBranch } = useContext(BranchContext);
 
@@ -99,14 +96,11 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
         [totalRevenue, distributedTotal]
     );
 
-    const onSubmit: SubmitHandler<RevenueFormValues> = (data) => {
-        onSave(data, currentBranch);
-        toast({
-            title: "نجاح",
-            description: "تم حفظ بيانات الإيراد بنجاح.",
-            className: "bg-primary text-primary-foreground",
-        });
-        form.reset();
+    const onSubmit: SubmitHandler<RevenueFormValues> = async (data) => {
+        const success = await onSave(data, currentBranch);
+        if (success) {
+            form.reset();
+        }
     };
 
     return (
@@ -233,7 +227,7 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
                     <CardFooter className="justify-end">
                         <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
                             <Save className="mr-2" />
-                            حفظ الإيرادات
+                            {form.formState.isSubmitting ? 'جاري الحفظ...' : 'حفظ الإيرادات'}
                         </Button>
                     </CardFooter>
                 </Card>
