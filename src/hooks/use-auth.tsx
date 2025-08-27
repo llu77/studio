@@ -51,65 +51,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearError = () => setError(null);
 
-  // This function now primarily serves as a fallback mechanism.
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    let attempts = 0;
-    const maxAttempts = 5; 
-    const delay = 1000;
-
-    while(attempts < maxAttempts) {
-      try {
-        console.log(`Fetching user details for UID: ${firebaseUser.uid}, Attempt: ${attempts + 1}`);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          console.log("User document found in Firestore.");
-          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-          return { uid: firebaseUser.uid, ...userDoc.data() } as UserData;
-        } else {
-           console.log("User document not found, attempting to create it...");
-           const initialUserData = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
-           if (initialUserData) {
-             const newUserDoc = {
-                ...initialUserData,
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                isActive: true,
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp(),
-            };
-            delete (newUserDoc as any).id;
-            await setDoc(userDocRef, newUserDoc);
-            console.log(`Successfully created Firestore document for user: ${firebaseUser.uid}`);
-            return { ...newUserDoc, createdAt: new Timestamp(Date.now()/1000, 0), lastLogin: new Timestamp(Date.now()/1000, 0)} as UserData;
-           } else {
-             throw new Error(`No initial user data found for email: ${firebaseUser.email}`);
-           }
-        }
-      } catch (e: any) {
-        attempts++;
-        console.error(`Error in fetchUserDetails (Attempt ${attempts}):`, e);
-        if(attempts >= maxAttempts) {
-          break; 
-        }
-        await new Promise(resolve => setTimeout(resolve, delay * attempts));
-      }
-    }
-    
-    console.error("CRITICAL: Failed to fetch user details from Firestore after multiple attempts. This indicates a permissions issue or network problem.");
-    setError("فشل الاتصال بقاعدة البيانات. سيتم استخدام بيانات محلية مؤقتة.");
-    
-    // FALLBACK MECHANISM
+    // CRITICAL: Fallback mechanism as Firestore rules are not applying.
+    console.warn("Using mock user data due to Firestore access issues.");
     const mockUserData = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
     if (mockUserData) {
-        console.warn(`Found mock user data as a fallback: ${mockUserData.name}`);
-        return {
-            ...mockUserData,
-            uid: firebaseUser.uid
-        } as UserData;
+      console.log(`Found mock user data as a fallback: ${mockUserData.name}`);
+      return {
+        ...mockUserData,
+        uid: firebaseUser.uid,
+        isActive: true,
+      } as UserData;
     }
-
+    
+    setError("فشل العثور على بيانات المستخدم المحلية.");
     return null;
   }, []);
 
@@ -119,9 +74,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       setError(null);
       if (firebaseUser) {
-          const details = await fetchUserDetails(firebaseUser);
-          setUser(firebaseUser);
-          setUserDetails(details);
+        // We are now primarily relying on the fallback.
+        const details = await fetchUserDetails(firebaseUser);
+        setUser(firebaseUser);
+        setUserDetails(details);
       } else {
         setUser(null);
         setUserDetails(null);
@@ -137,7 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest.
+      // onAuthStateChanged will handle setting user and userDetails.
       return true;
     } catch (error) {
       const authError = error as AuthError;

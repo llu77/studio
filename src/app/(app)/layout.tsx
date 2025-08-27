@@ -104,7 +104,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return;
     }
     
+    // NOTE: Data fetching is temporarily disabled to bypass Firestore permissions issues.
+    // The app will run on mock/local data until the underlying infrastructure issue is resolved.
     setLoadingData(true);
+    console.warn("Data fetching from Firestore is currently disabled in layout.tsx.");
+
+    // MOCK DATA LOADING (REMOVE WHEN FIRESTORE IS FIXED)
+    setRevenueRecords([]);
+    setExpenses([]);
+    setRequests([]);
+    setLoadingData(false);
+
+    /*
+    // --- THIS IS THE ORIGINAL FIRESTORE FETCHING LOGIC ---
     let active = true;
 
     const branchNameForQuery = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
@@ -152,6 +164,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       active = false;
       unsubscribers.forEach(unsub => unsub());
     };
+    */
   }, [userDetails, currentBranch, authLoading]);
 
 

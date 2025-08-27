@@ -3,36 +3,68 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and update their own document.
-    // User documents are created by a Cloud Function trigger (onUserCreate).
+    
+    // --- Users Collection ---
+    // Users can:
+    // 1. Create their own user document.
+    // 2. Read their own user document.
+    // 3. Update their own user document.
+    // Admins can read/write any user document.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      // Disallow client-side creation to enforce Cloud Function-based creation.
-      allow create: if request.auth.uid == userId; 
+      allow create: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مدير النظام';
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مدير النظام';
     }
 
-    // A function to check user roles from the users collection.
-    function isUserRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // --- Data Collections (Revenue, Expenses, Requests) ---
+    // General access rules based on user roles.
+    function isUserAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isManager() {
+        let role = getUserData().role;
+        return role == 'مدير النظام' || role == 'شريك';
+    }
+
+    function isSupervisor() {
+        return getUserData().role == 'مشرف فرع';
+    }
+
+    function isEmployee() {
+        return getUserData().role == 'موظف';
     }
     
-    function isBranchSupervisor(branchName) {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == branchName && isUserRole('مشرف فرع');
+    // Revenue: Supervisors and Managers can create/read. Only managers can delete.
+    match /revenue/{docId} {
+      allow read, create: if isManager() || isSupervisor();
+      allow update, delete: if isManager();
     }
-
-    // Rules for data collections (revenue, expenses, requests)
-    match /{collection}/{docId} {
-      // Admins and Partners can read/write everything.
-      allow read, write: if isUserRole('مدير النظام') || isUserRole('شريك');
-
-      // Supervisors can read/write data for their own branch.
-      allow read, write: if resource.data.branch != null && isBranchSupervisor(resource.data.branch);
-
-      // Employees can only create new requests for themselves.
-      allow create: if collection == 'requests' && request.resource.data.employeeId == request.auth.uid;
-      
-      // Employees can read their own requests.
-      allow read: if collection == 'requests' && resource.data.employeeId == request.auth.uid;
+    
+    // Expenses: Supervisors and Managers can create/read. Only managers can delete.
+    match /expenses/{docId} {
+      allow read, create: if isManager() || isSupervisor();
+      allow update, delete: if isManager();
     }
+    
+    // Requests:
+    // - Employees can create their own requests.
+    // - Employees can read their own requests.
+    // - Supervisors can read requests for their branch.
+    // - Managers can read all requests.
+    // - Supervisors and Managers can update requests (for status changes).
+    match /requests/{docId} {
+      allow create: if isEmployee();
+      allow read: if (isEmployee() && resource.data.employeeId == request.auth.uid) || 
+                     (isSupervisor() && resource.data.employeeBranch == getUserData().branch) || 
+                     isManager();
+      allow update: if isSupervisor() || isManager();
+      allow delete: if isManager();
+    }
+    
   }
 }
