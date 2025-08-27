@@ -2,10 +2,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { AuthError } from 'firebase/auth';
+import { initialUsers } from '@/app/(app)/layout';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
 
 interface AuthContextType {
@@ -32,16 +33,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(user);
       if (user) {
         setLoading(true);
-        // Fetch user details from Firestore
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUserDetails({ id: userDoc.id, ...userDoc.data() } as AppUser & { id: string });
         } else {
-            // Handle case where user exists in Auth but not Firestore
-            setUserDetails(null); 
-            // Optional: logout user if their record is deleted from Firestore
-            await signOut(auth);
+            const appUser = initialUsers.find(u => u.email === user.email);
+            if (appUser) {
+                await setDoc(userDocRef, appUser);
+                setUserDetails({ id: userDocRef.id, ...appUser } as AppUser & { id: string });
+            } else {
+                setUserDetails(null);
+                await signOut(auth);
+            }
         }
         setLoading(false);
       } else {
@@ -56,9 +60,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
         await setPersistence(auth, browserSessionPersistence);
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // The onAuthStateChanged listener will handle setting user and userDetails state
         return userCredential.user;
     } catch (error) {
+        const authError = error as AuthError;
+        if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found') {
+            const appUser = initialUsers.find(u => u.email === email);
+            if (appUser) {
+                try {
+                    const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const userDocRef = doc(db, "users", newUserCredential.user.uid);
+                    await setDoc(userDocRef, appUser);
+                    return newUserCredential.user;
+                } catch (createError) {
+                    console.error("User Creation Error:", createError);
+                    throw createError;
+                }
+            }
+        }
         console.error("Login Error:", error);
         throw error;
     }

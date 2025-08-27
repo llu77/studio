@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase';
 import { EmployeeRequest } from "./requests/employees/page";
 
 
-const initialUsers = [
+export const initialUsers = [
     // --- فرع لبن ---
     { id: 'USR001', name: 'عبدالحي', email: 'a@1.com', role: 'مشرف فرع', branch: 'فرع لبن' },
     { id: 'USR002', name: 'محمود عماره', email: 'm@1.com', role: 'موظف', branch: 'فرع لبن' },

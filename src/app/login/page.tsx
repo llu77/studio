@@ -91,37 +91,32 @@ export default function LoginPage() {
         return;
     }
 
-    if (!branchId) {
-        setError("الرجاء اختيار الفرع للمتابعة.");
-        return;
-    }
+    // Branch selection is not mandatory for initial login/creation
+    // if (!branchId) {
+    //     setError("الرجاء اختيار الفرع للمتابعة.");
+    //     return;
+    // }
 
     try {
       const loggedInUser = await login(email, password);
       
-      // Firestore logic requires UID, so we must wait for the user object.
-      // The onAuthStateChanged listener in useAuth handles fetching userDetails,
-      // but here we need it immediately for branch validation.
       const userDocRef = doc(db, "users", loggedInUser.uid);
       const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-          await logout();
-          throw new Error("لم يتم العثور على بيانات المستخدم في قاعدة البيانات.");
-      }
-      const userData = userDoc.data();
-      
-      const userBranchId = userData.branch === 'فرع لبن' ? 'branch_laban' : userData.branch === 'فرع طويق' ? 'branch_tuwaiq' : 'all';
+      if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userBranchId = userData.branch === 'فرع لبن' ? 'branch_laban' : userData.branch === 'فرع طويق' ? 'branch_tuwaiq' : 'all';
 
-      if (userBranchId !== 'all' && userData.role !== 'مدير النظام' && userBranchId !== branchId) {
-          await logout();
-          throw new Error('الفرع المختار غير صحيح لهذا الحساب.');
+          if (branchId && userBranchId !== 'all' && userData.role !== 'مدير النظام' && userBranchId !== branchId) {
+              await logout();
+              throw new Error('الفرع المختار غير صحيح لهذا الحساب.');
+          }
+
+          await updateDoc(userDocRef, {
+            lastLogin: serverTimestamp(),
+            loginBranch: branchId ? (branchId === 'branch_laban' ? 'فرع لبن' : 'فرع طويق') : userData.branch,
+          });
       }
-       
-      await updateDoc(userDocRef, {
-        lastLogin: serverTimestamp(),
-        loginBranch: branchId === 'branch_laban' ? 'فرع لبن' : 'فرع طويق'
-      });
       
       setAttempts(0); // Reset attempts on successful login
       
@@ -210,8 +205,8 @@ export default function LoginPage() {
 
             {/* NEW FEATURE: Branch Selector */}
             <div className="space-y-2">
-              <Label htmlFor="branch">الفرع</Label>
-              <Select value={branchId} onValueChange={setBranchId} required disabled={loading || locked}>
+              <Label htmlFor="branch">الفرع (اختياري عند أول دخول)</Label>
+              <Select value={branchId} onValueChange={setBranchId} disabled={loading || locked}>
                 <SelectTrigger id="branch">
                   <SelectValue placeholder="اختر الفرع" />
                 </SelectTrigger>
