@@ -42,3 +42,4 @@ exports.makeuppercase = onDocumentWritten("/messages/{documentId}", (event) => {
 });
 
 exports.monthlyReset = require('./monthlyReset');
+exports.backupDatabase = require('./backup');
