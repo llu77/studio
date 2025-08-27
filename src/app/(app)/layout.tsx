@@ -13,15 +13,26 @@ import { Expense } from "./expenses/page";
 
 
 const initialUsers = [
-    { id: 'USR001', name: 'المدير العام', email: 'admin@branchflow.com', role: 'مدير النظام', branch: 'كافة الفروع' },
-    { id: 'USR002', name: 'أحمد علي', email: 'ahmed@branchflow.com', role: 'موظف', branch: 'فرع لبن' },
-    { id: 'USR003', name: 'يوسف خالد', email: 'youssef@branchflow.com', role: 'مشرف فرع', branch: 'فرع طويق' },
-    { id: 'USR004', name: 'عبدالحي', email: 'abdulhai@branchflow.com', role: 'موظف', branch: 'فرع طويق' },
-    { id: 'USR005', name: 'فاطمة محمد', email: 'fatima@branchflow.com', role: 'موظف', branch: 'فرع لبن' },
+    // --- فرع لبن ---
+    { id: 'USR001', name: 'عبدالحي', email: 'a@1.com', role: 'مشرف فرع', branch: 'فرع لبن' },
+    { id: 'USR002', name: 'محمود عماره', email: 'm@1.com', role: 'موظف', branch: 'فرع لبن' },
+    { id: 'USR003', name: 'علاء ناصر', email: 'alaa@1.com', role: 'موظف', branch: 'فرع لبن' },
+    { id: 'USR004', name: 'السيد', email: 's@1.com', role: 'موظف', branch: 'فرع لبن' },
+    // --- فرع طويق ---
+    { id: 'USR005', name: 'محمد إسماعيل', email: 'm1@1.com', role: 'مشرف فرع', branch: 'فرع طويق' },
+    { id: 'USR006', name: 'محمد ناصر', email: 'mn@1.com', role: 'موظف', branch: 'فرع طويق' },
+    { id: 'USR007', name: 'فارس', email: 'f@1.com', role: 'موظف', branch: 'فرع طويق' },
+    { id: 'USR008', name: 'السيد (طويق)', email: 's17@1.com', role: 'موظف', branch: 'فرع طويق' },
+     // --- الشركاء ---
+    { id: 'USR009', name: 'سالم الوادعي', email: 'w@1.com', role: 'شريك', branch: 'كافة الفروع' },
+    { id: 'USR010', name: 'عبدالله المطيري', email: 'Ab@1.com', role: 'شريك', branch: 'كافة الفروع' },
+    { id: 'USR011', name: 'سعود الجريسي', email: 'sa@1.com', role: 'شريك', branch: 'كافة الفروع' },
+     // --- المدير ---
+    { id: 'USR012', name: 'مدير النظام', email: 'admin@branchflow.com', role: 'مدير النظام', branch: 'كافة الفروع' },
 ];
 
 export type User = typeof initialUsers[0];
-export type Role = 'مدير النظام' | 'مشرف فرع' | 'موظف';
+export type Role = 'مدير النظام' | 'مشرف فرع' | 'موظف' | 'شريك';
 export type Branch = 'كافة الفروع' | 'فرع لبن' | 'فرع طويق' | 'غير محدد';
 
 
@@ -29,24 +40,35 @@ export type Branch = 'كافة الفروع' | 'فرع لبن' | 'فرع طوي�
 const initialRevenueData: RevenueRecord[] = [
   {
     id: "REV001",
-    date: "2024-07-20",
-    totalRevenue: 2500,
-    cash: 1000,
-    card: 1500,
+    date: "2024-07-28",
+    totalRevenue: 3250,
+    cash: 1250,
+    card: 2000,
     distribution: [
-      { employeeName: "أحمد علي", amount: 1300 },
-      { employeeName: "فاطمة محمد", amount: 1200 },
+      { employeeName: "محمود عماره", amount: 1600 },
+      { employeeName: "علاء ناصر", amount: 1650 },
     ],
     status: "Matched",
   },
   {
     id: "REV002",
-    date: "2024-07-19",
+    date: "2024-07-27",
+    totalRevenue: 2900,
+    cash: 900,
+    card: 2000,
+    distribution: [
+      { employeeName: "عبدالحي", amount: 2900 },
+    ],
+    status: "Matched",
+  },
+   {
+    id: "REV003",
+    date: "2024-07-26",
     totalRevenue: 1800,
     cash: 800,
     card: 1050,
     distribution: [
-      { employeeName: "أحمد علي", amount: 1800 },
+      { employeeName: "السيد", amount: 1800 },
     ],
     status: "Discrepancy",
     discrepancyReason: "زيادة 50 ريال في صندوق الشبكة."
@@ -54,8 +76,9 @@ const initialRevenueData: RevenueRecord[] = [
 ];
 
 const initialExpensesData: Expense[] = [
-    { id: 'EXP001', date: '2024-07-21', branch: 'فرع لبن', category: 'فواتير', amount: 450.00, description: 'فاتورة كهرباء شهر يوليو' },
-    { id: 'EXP002', date: '2024-07-20', branch: 'فرع طويق', category: 'صيانة', amount: 1200.00, description: 'إصلاح مكيف الهواء' },
+    { id: 'EXP001', date: '2024-07-28', branch: 'فرع لبن', category: 'فواتير', amount: 450.00, description: 'فاتورة كهرباء شهر يوليو' },
+    { id: 'EXP002', date: '2024-07-27', branch: 'فرع طويق', category: 'صيانة', amount: 1200.00, description: 'إصلاح مكيف الهواء' },
+    { id: 'EXP003', date: '2024-07-25', branch: 'فرع لبن', category: 'مستلزمات تشغيلية', amount: 350.00, description: 'شراء مواد تنظيف' },
 ];
 
 
