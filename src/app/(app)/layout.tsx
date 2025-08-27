@@ -154,14 +154,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Inject props into child pages
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
-      return React.cloneElement(child, { 
-        revenueRecords, 
-        expenses,
-        addRevenueRecord,
-        deleteRevenueRecord,
-        addExpense,
-        deleteExpense
-      } as any);
+        // A more robust way to pass props, checking the component's type if possible
+        // For simplicity, we'll pass all shared state and functions.
+        // A more advanced solution might involve a dedicated context provider for shared data.
+        return React.cloneElement(child, {
+            revenueRecords,
+            expenses,
+            addRevenueRecord,
+            deleteRevenueRecord,
+            addExpense,
+            deleteExpense
+        } as any);
     }
     return child;
   });
@@ -183,5 +186,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
-
-    
