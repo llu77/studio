@@ -1,16 +1,74 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to create their own user document, but not edit others'
+    // قاعدة عامة للتطوير - تسمح للمستخدمين المسجلين بالوصول
+    // هذه القواعد آمنة بما يكفي للتطوير والاختبار
+    
+    // السماح لأي مستخدم مسجل بقراءة وإنشاء مستند المستخدم الخاص به
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && 
+        (request.auth.uid == userId || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      allow delete: if false; // منع الحذف
     }
     
-    // Allow logged-in users to read and write to other collections
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // السماح بالوصول لمجموعة employees
+    match /employees/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة branches
+    match /branches/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة requests
+    match /requests/{document=**} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+    
+    // السماح بالوصول لمجموعة finances (تشمل revenue و expenses)
+    match /finances/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة revenue
+    match /revenue/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة expenses
+    match /expenses/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة notifications
+    match /notifications/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // السماح بالوصول لمجموعة finance_archive
+    match /finance_archive/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // قاعدة عامة احتياطية للمجموعات الأخرى
+    match /{collection}/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && collection != 'users';
     }
   }
 }

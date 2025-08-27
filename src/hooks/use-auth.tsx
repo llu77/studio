@@ -4,14 +4,28 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import type { AuthError } from 'firebase/auth';
 import { initialUsers } from '@/app/(app)/layout';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
 
+
+interface UserData {
+  uid: string;
+  email: string;
+  name: string;
+  role: Role;
+  branch: Branch;
+  id?: string;
+  createdAt?: Timestamp | any;
+  lastLogin?: Timestamp | any;
+  isActive?: boolean;
+}
+
+
 interface AuthContextType {
   user: User | null;
-  userDetails: (AppUser & { id: string }) | null; // Now includes the document ID
+  userDetails: UserData | null; 
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
@@ -25,7 +39,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userDetails, setUserDetails] = useState<(AppUser & { id: string }) | null>(null);
+  const [userDetails, setUserDetails] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,27 +48,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setLoading(true);
         const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserDetails({ id: userDoc.id, ...userDoc.data() } as AppUser & { id: string });
-        } else {
-            // This case handles when a user is in Auth but not in Firestore.
-            // We can create the Firestore doc from our initialUsers list.
-            const appUser = initialUsers.find(u => u.email === user.email);
-            if (appUser) {
-                try {
-                    await setDoc(userDocRef, appUser);
-                    setUserDetails({ id: userDocRef.id, ...appUser } as AppUser & { id: string });
-                } catch (e) {
-                     console.error("Error setting user document:", e);
-                     setUserDetails(null);
-                     await signOut(auth);
-                }
+        try {
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+              setUserDetails({ id: userDoc.id, ...userDoc.data() } as UserData);
             } else {
-                // If user is not in our initial list, they shouldn't be here.
-                setUserDetails(null);
-                await signOut(auth);
+                const appUser = initialUsers.find(u => u.email === user.email);
+                if (appUser) {
+                    await setDoc(userDocRef, { ...appUser, uid: user.uid, createdAt: serverTimestamp(), lastLogin: serverTimestamp(), isActive: true });
+                    setUserDetails({ id: userDocRef.id, ...appUser } as UserData);
+                }
             }
+        } catch (error) {
+            console.error("Error fetching or creating user document:", error);
+            // Handle error, maybe sign out user
+            await signOut(auth);
+            setUserDetails(null);
         }
         setLoading(false);
       } else {
@@ -69,10 +78,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
         await setPersistence(auth, browserSessionPersistence);
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         return userCredential.user;
     } catch (error) {
         const authError = error as AuthError;
-        if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found') {
+        if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
             const appUser = initialUsers.find(u => u.email === email);
             if (appUser) {
                 try {
@@ -110,3 +121,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
