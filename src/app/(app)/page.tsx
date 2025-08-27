@@ -8,6 +8,7 @@ import { AiSummary } from "@/components/dashboard/ai-summary";
 import { DollarSign, Landmark, Wallet, Users } from "lucide-react";
 import { BranchContext, DataContext } from './layout';
 import { formatCurrency } from '@/lib/utils';
+import { getBonusTier } from './bonuses/page';
 
 
 export default function DashboardPage() {
@@ -15,26 +16,34 @@ export default function DashboardPage() {
   const { revenueRecords, expenses } = useContext(DataContext);
 
   const branchStats = useMemo(() => {
-    // This is a simplified filter. In a real app with more branch-specific data,
-    // you would filter expenses and revenues by branch.
-    // For now, we'll assume the data context holds data for the selected branch.
-    
+    // Data is now pre-filtered by the DataContext based on the selected branch.
     const totalRevenue = revenueRecords.reduce((acc, record) => acc + record.totalRevenue, 0);
     const totalExpenses = expenses.reduce((acc, expense) => acc + expense.amount, 0);
     const netProfit = totalRevenue - totalExpenses;
     
-    // Placeholder for bonus calculation
-    const totalBonus = 1250; 
+    // Calculate weekly bonus based on this week's revenue
+    const today = new Date();
+    const weekOfMonth = Math.floor((today.getDate() - 1) / 7);
+    
+    const weeklyRevenue = revenueRecords
+      .filter(record => {
+          const recordDate = new Date(record.date);
+          const recordWeek = Math.floor((recordDate.getDate() - 1) / 7);
+          return recordDate.getMonth() === today.getMonth() && recordWeek === weekOfMonth;
+      })
+      .reduce((sum, record) => sum + record.totalRevenue, 0);
+
+    const totalBonus = getBonusTier(weeklyRevenue).bonus * 4; // Simplified estimate for all employees
     
     return {
       revenue: formatCurrency(totalRevenue),
       expenses: formatCurrency(totalExpenses),
       profit: formatCurrency(netProfit),
       bonus: formatCurrency(totalBonus),
-      bonusDesc: "تم توزيعها على موظفين", // This can be made dynamic later
+      bonusDesc: "تقديري لهذا الأسبوع",
     };
 
-  }, [revenueRecords, expenses, currentBranch]);
+  }, [revenueRecords, expenses]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,19 +52,19 @@ export default function DashboardPage() {
           title="إجمالي الإيرادات"
           value={branchStats.revenue}
           icon={DollarSign}
-          description="+20.1% من الشهر الماضي"
+          description="للفرع المحدد هذا الشهر"
         />
         <StatCard
           title="إجمالي المصاريف"
           value={branchStats.expenses}
           icon={Wallet}
-          description="+18.1% من الشهر الماضي"
+          description="للفرع المحدد هذا الشهر"
         />
         <StatCard
           title="الأرباح الصافية"
           value={branchStats.profit}
           icon={Landmark}
-          description="+21% من الشهر الماضي"
+          description="للفرع المحدد هذا الشهر"
         />
          <StatCard
           title="بونص هذا الأسبوع"
@@ -66,7 +75,7 @@ export default function DashboardPage() {
       </div>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
-            <RevenueChart />
+            <RevenueChart chartData={revenueRecords}/>
         </div>
         <div className="xl:col-span-1">
             <AiSummary />

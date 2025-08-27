@@ -1,48 +1,71 @@
 
 "use client"
 
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
-
-const chartData = [
-  { month: "يناير", revenue: 186, expenses: 80 },
-  { month: "فبراير", revenue: 305, expenses: 200 },
-  { month: "مارس", revenue: 237, expenses: 120 },
-  { month: "أبريل", revenue: 273, expenses: 190 },
-  { month: "مايو", revenue: 209, expenses: 130 },
-  { month: "يونيو", revenue: 214, expenses: 140 },
-]
+import type { RevenueRecord } from "@/app/(app)/revenue/page";
 
 const chartConfig = {
   revenue: {
     label: "الإيرادات",
     color: "hsl(var(--chart-1))",
   },
-  expenses: {
+  expenses: { // This can be added later if needed
     label: "المصاريف",
-    color: "hsl(var(--chart-2))",
+    color: "hsl(var(--chart-4))",
   },
-} satisfies ChartConfig
+} satisfies ChartConfig;
 
-export function RevenueChart() {
+// Helper to get week of the month
+function getWeekOfMonth(date: Date) {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  return Math.ceil((date.getDate() + firstDay) / 7);
+}
+
+
+export function RevenueChart({ chartData }: { chartData: RevenueRecord[] }) {
+  
+  const aggregatedData = useMemo(() => {
+    const weeklyData: { [key: string]: number } = {
+      "الأسبوع 1": 0,
+      "الأسبوع 2": 0,
+      "الأسبوع 3": 0,
+      "الأسبوع 4": 0,
+      "الأسبوع 5": 0,
+    };
+
+    chartData.forEach(record => {
+      const date = new Date(record.date);
+      const week = getWeekOfMonth(date);
+      weeklyData[`الأسبوع ${week}`] += record.totalRevenue;
+    });
+
+    return Object.entries(weeklyData).map(([week, revenue]) => ({
+      name: week,
+      revenue: revenue / 1000 // Convert to thousands for chart
+    })).filter(d => d.revenue > 0);
+
+  }, [chartData]);
+
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>نظرة عامة على الإيرادات</CardTitle>
-        <CardDescription>الإيرادات والمصاريف خلال آخر 6 أشهر</CardDescription>
+        <CardDescription>الإيرادات الأسبوعية للفرع المحدد هذا الشهر</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-          <BarChart data={chartData} accessibilityLayer>
+          <BarChart data={aggregatedData} accessibilityLayer>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="name"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
              <YAxis
                 tickFormatter={(value) => `${value} ألف`}
@@ -52,7 +75,6 @@ export function RevenueChart() {
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
-            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
           </BarChart>
         </ChartContainer>
       </CardContent>

@@ -30,7 +30,7 @@ const mockUsersData = {
     ]
 };
 
-const getBonusTier = (revenue: number) => {
+export const getBonusTier = (revenue: number) => {
     if (revenue >= 3500) return { bonus: 280, level: 5, color: "text-green-500", icon: <ArrowUp className="h-4 w-4" /> };
     if (revenue >= 2900) return { bonus: 220, level: 4, color: "text-green-400", icon: <ArrowUp className="h-4 w-4" /> };
     if (revenue >= 2400) return { bonus: 150, level: 3, color: "text-blue-500", icon: <Minus className="h-4 w-4" /> };
@@ -39,7 +39,7 @@ const getBonusTier = (revenue: number) => {
     return { bonus: 0, level: 0, color: "text-muted-foreground", icon: <Minus className="h-4 w-4" /> };
 };
 
-const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 'الأسبوع الثالث', 'الأسبوع الرابع'];
+const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 'الأسبوع الثالث', 'الأسبوع الرابع', 'الأسبوع الخامس'];
 
 // --- Component ---
 export default function BonusesPage() {
@@ -49,7 +49,7 @@ export default function BonusesPage() {
   const [selectedWeek, setSelectedWeek] = useState(0); 
   const { toast } = useToast();
   // NEW FEATURE: State to track weekly approvals
-  const [weeklyApproval, setWeeklyApproval] = useState([false, false, false, false]);
+  const [weeklyApproval, setWeeklyApproval] = useState([false, false, false, false, false]);
   
   const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
   const employeesForBranch = mockUsersData[branchName as keyof typeof mockUsersData] || [];
@@ -60,6 +60,7 @@ export default function BonusesPage() {
     const weekRecords = revenueRecords.filter(record => {
         const recordDate = new Date(record.date);
         const dayOfMonth = recordDate.getDate();
+        // weekIndex is 0-based, so week 1 is index 0 (days 1-7)
         const week = Math.floor((dayOfMonth - 1) / 7);
         return week === weekIndex;
     });
@@ -88,7 +89,7 @@ export default function BonusesPage() {
      return employeesForBranch.map(emp => {
         let totalRevenue = 0;
         let totalBonus = 0;
-        for (let i=0; i<4; i++) {
+        for (let i=0; i<5; i++) { // Month can have up to 5 weeks
             const weeklyRevenue = getWeeklyRevenueForEmployee(emp.name, i);
             totalRevenue += weeklyRevenue;
             totalBonus += getBonusTier(weeklyRevenue).bonus;

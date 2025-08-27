@@ -98,25 +98,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
-    // We must have userDetails before we can fetch any data.
-    if (authLoading || !userDetails) {
-        setLoadingData(authLoading);
-        return;
+    if (authLoading) return;
+    if (!userDetails) {
+      setLoadingData(false);
+      return;
     }
-    
-    // NOTE: Data fetching is temporarily disabled to bypass Firestore permissions issues.
-    // The app will run on mock/local data until the underlying infrastructure issue is resolved.
+
     setLoadingData(true);
-    console.warn("Data fetching from Firestore is currently disabled in layout.tsx.");
-
-    // MOCK DATA LOADING (REMOVE WHEN FIRESTORE IS FIXED)
-    setRevenueRecords([]);
-    setExpenses([]);
-    setRequests([]);
-    setLoadingData(false);
-
-    /*
-    // --- THIS IS THE ORIGINAL FIRESTORE FETCHING LOGIC ---
     let active = true;
 
     const branchNameForQuery = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
@@ -138,24 +126,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
     
-    // Base query options
-    const baseQueryOptions = [orderBy('date', 'desc'), limit(50)];
-    let branchFilter;
-
+    // Define queries based on role
+    const baseQueryOptions = [orderBy('date', 'desc'), limit(100)];
+    let branchFilter = where('branch', '==', branchNameForQuery);
+    
     if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-        branchFilter = where('branch', '==', branchNameForQuery);
         setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
         setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
-        setupSubscription('requests', [branchFilter, ...baseQueryOptions], setRequests);
+        setupSubscription('requests', [where('employeeBranch', '==', branchNameForQuery), orderBy('date', 'desc'), limit(100)], setRequests);
     } else if (userDetails.role === 'مشرف فرع') {
+        // Supervisors see data for their own branch, regardless of the dropdown
         branchFilter = where('branch', '==', userDetails.branch);
+        const requestBranchFilter = where('employeeBranch', '==', userDetails.branch);
         setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
         setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
-        setupSubscription('requests', [where('employeeBranch', '==', userDetails.branch), orderBy('date', 'desc'), limit(100)], setRequests);
+        setupSubscription('requests', [requestBranchFilter, orderBy('date', 'desc'), limit(100)], setRequests);
     } else { // Employee
-        setRevenueRecords([]);
+        setRevenueRecords([]); // Employees don't see financial data
         setExpenses([]);
-        setupSubscription('requests', [where('employeeId', '==', userDetails.uid), orderBy('date', 'desc'), limit(50)], setRequests);
+        setupSubscription('requests', [where('employeeId', '==', userDetails.id), orderBy('date', 'desc'), limit(50)], setRequests);
     }
 
     setLoadingData(false);
@@ -164,7 +153,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       active = false;
       unsubscribers.forEach(unsub => unsub());
     };
-    */
   }, [userDetails, currentBranch, authLoading]);
 
 
@@ -270,7 +258,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (!userDetails) {
-      return renderLoadingScreen('جاري تحميل بيانات المستخدم...');
+      // Don't show the "loading user data" if we are on the login page
+      return router.pathname === '/login' ? <>{children}</> : renderLoadingScreen('جاري تحميل بيانات المستخدم...');
   }
 
   return (
