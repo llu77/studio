@@ -1,26 +1,21 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can only read their own document.
-    // Admins can read any user document.
-    // Users can create their own document upon signup.
-    // Users can update their own document.
+    // قاعدة محددة وواضحة لمجموعة المستخدمين
     match /users/{userId} {
-      allow read: if request.auth.uid == userId ||
-                   (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'مدير النظام');
-
-      allow create: if request.auth.uid == userId;
-
-      allow update: if request.auth.uid == userId;
-
-      allow delete: if false; // Deletion should be handled by admin functions
+      // أي مستخدم مسجل يمكنه قراءة بيانات أي مستخدم آخر (لأغراض عرض الأسماء وغيرها)
+      allow read: if request.auth != null;
+      // المستخدم يمكنه فقط إنشاء مستنده الخاص
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // المستخدم يمكنه فقط تحديث مستنده الخاص
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // لا يمكن حذف المستخدمين من خلال التطبيق
+      allow delete: if false;
     }
 
-    // Authenticated users can read/write to these collections.
-    // You might want to add more specific rules based on roles (e.g. only supervisors/admins can write).
+    // قواعد الوصول لمجموعات البيانات الرئيسية
+    // اسمح فقط للمستخدمين المسجلين بالوصول
+
     match /revenue/{docId} {
       allow read, write: if request.auth != null;
     }
@@ -30,13 +25,28 @@ service cloud.firestore {
     }
 
     match /requests/{docId} {
-        allow read, update: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.employeeId;
-    }
-    
-    // Default deny all other collections
-    match /{path=**}/ {
       allow read, write: if request.auth != null;
     }
+
+    match /branches/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /finances/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /finance_archive/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /notifications/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // هذه القاعدة العامة تم إزالتها لتجنب التعارض
+    // match /{document=**} {
+    //   allow read, write: if request.auth != null;
+    // }
   }
 }
