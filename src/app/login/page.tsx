@@ -13,31 +13,23 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import type { AuthError } from 'firebase/auth';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { db } from '@/lib/firebase'; 
-
-const mockBranches = [
-    { id: 'branch_laban', name: 'فرع لبن' },
-    { id: 'branch_tuwaiq', name: 'فرع طويق' },
-];
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading, userDetails } = useAuth();
+  const { user, login, loading, error: authError, clearError, userDetails } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
-
-  const [branchId, setBranchId] = useState('');
-  const [branches, setBranches] = useState<{id: string, name: string}[]>([]);
+  
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    setBranches(mockBranches);
-  }, []);
+      if (authError) {
+          setError(authError);
+      }
+  }, [authError]);
 
   useEffect(() => {
     const lockTime = localStorage.getItem('lockTime');
@@ -64,6 +56,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearError();
     setError(null);
     
     if (locked) {
@@ -83,19 +76,7 @@ export default function LoginPage() {
 
       router.push("/");
 
-    } catch (err) {
-        const authError = err as AuthError | Error;
-        let errorMessage = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
-        if ('code' in authError) {
-            if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password') {
-                errorMessage = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-            } else if (authError.code === 'auth/invalid-email') {
-                errorMessage = "صيغة البريد الإلكتروني غير صحيحة.";
-            }
-        } else {
-            errorMessage = authError.message;
-        }
-
+    } catch (err: any) {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         if (newAttempts >= 5) {
@@ -108,7 +89,7 @@ export default function LoginPage() {
               localStorage.removeItem('lockTime');
             }, 30 * 60 * 1000);
         } else {
-            setError(`${errorMessage} (المحاولات المتبقية: ${5 - newAttempts})`);
+            setError(`${err.message} (المحاولات المتبقية: ${5 - newAttempts})`);
         }
     }
   };

@@ -106,7 +106,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!user) return;
+    // **FIX**: Ensure user is authenticated before fetching data
+    if (!user) {
+        setLoadingData(true); // Keep loading if no user
+        return;
+    };
     
     setLoadingData(true);
     loadingCounter.current = 3;
@@ -248,5 +252,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
-
-    
