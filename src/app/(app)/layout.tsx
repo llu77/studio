@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebarContent } from "@/components/layout/sidebar-content";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
@@ -98,50 +98,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // NEW FEATURE: Add loading state for data fetching
   const [loadingData, setLoadingData] = useState(true);
 
+  // --- FIX: Loading state management ---
+  const loadingCounter = useRef(3); // 3 listeners: revenue, expenses, requests
+
+  const onDataLoaded = () => {
+    loadingCounter.current -= 1;
+    if (loadingCounter.current === 0) {
+      setLoadingData(false);
+    }
+  };
+
 
   // NEW FEATURE: Real-time data fetching from Firestore
   useEffect(() => {
+    if (!user) return; // Wait for user to be authenticated
+    
+    loadingCounter.current = 3;
     setLoadingData(true);
-    // Listener for Revenue Records
-    const revenueQuery = query(collection(db, 'revenue'), orderBy('date', 'desc'));
-    const unsubscribeRevenue = onSnapshot(revenueQuery, (snapshot) => {
-        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RevenueRecord));
-        setRevenueRecords(records);
-        setLoadingData(false);
-    }, (error) => {
-        console.error("Error fetching revenue records: ", error);
-        setLoadingData(false);
-    });
 
-    // Listener for Expenses
-    const expensesQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
-    const unsubscribeExpenses = onSnapshot(expensesQuery, (snapshot) => {
-        const expenseRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-        setExpenses(expenseRecords);
-        setLoadingData(false);
-    }, (error) => {
-        console.error("Error fetching expenses: ", error);
-        setLoadingData(false);
-    });
+    const collections = [
+      { name: 'revenue', setter: setRevenueRecords, orderByField: 'date' },
+      { name: 'expenses', setter: setExpenses, orderByField: 'date' },
+      { name: 'requests', setter: setRequests, orderByField: 'date' }
+    ];
 
-    // Listener for Employee Requests
-    const requestsQuery = query(collection(db, 'requests'), orderBy('date', 'desc'));
-    const unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
-        const requestRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmployeeRequest));
-        setRequests(requestRecords);
-        setLoadingData(false);
-    }, (error) => {
-        console.error("Error fetching requests: ", error);
-        setLoadingData(false);
+    const unsubscribes = collections.map(({ name, setter, orderByField }) => {
+      const q = query(collection(db, name), orderBy(orderByField, 'desc'));
+      return onSnapshot(q, 
+        (snapshot) => {
+          const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setter(records as any);
+          onDataLoaded();
+        }, 
+        (error) => {
+          console.error(`Error fetching ${name}: `, error);
+          onDataLoaded(); // Decrement counter even on error to prevent getting stuck
+        }
+      );
     });
 
     // Cleanup listeners on unmount
     return () => {
-        unsubscribeRevenue();
-        unsubscribeExpenses();
-        unsubscribeRequests();
+      unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, []);
+  }, [user]);
 
 
 
