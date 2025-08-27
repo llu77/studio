@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
@@ -57,6 +57,12 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
     const { currentBranch } = useContext(BranchContext);
+
+    const branchEmployees = useMemo(() => {
+        const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
+        return users.filter(u => u.branch === branchName && (u.role === 'موظف' || u.role === 'مشرف فرع'));
+    }, [users, currentBranch]);
+
 
     const form = useForm<RevenueFormValues>({
         resolver: zodResolver(revenueFormSchema),
@@ -181,8 +187,8 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {users.filter(u => u.role !== 'مدير النظام').map(user => (
-                                                        <SelectItem key={user.id} value={user.name}>{user.name} ({user.branch})</SelectItem>
+                                                    {branchEmployees.map(user => (
+                                                        <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
