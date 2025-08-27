@@ -69,7 +69,7 @@ export const DataContext = React.createContext<{
     requests: EmployeeRequest[];
     addRequest: (request: Omit<EmployeeRequest, 'id'>) => Promise<void>;
     updateRequestStatus: (id: string, status: EmployeeRequest['status'], notes?: string) => Promise<void>;
-    loadingData: boolean; // NEW FEATURE: Add loading state
+    loadingData: boolean; 
 }>({
     revenueRecords: [],
     addRevenueRecord: async () => {},
@@ -85,7 +85,7 @@ export const DataContext = React.createContext<{
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userDetails, loading: authLoading } = useAuth();
   const router = useRouter();
   const [currentBranch, setCurrentBranch] = useState('laban');
   const [users, setUsers] = useState<User[]>(initialUsers);
@@ -98,14 +98,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
-    // Only fetch data if the user is authenticated.
-    if (!user) {
-        setLoadingData(false); // Not loading if no user
+    // CRITICAL FIX: Only fetch data if userDetails is fully loaded.
+    if (!userDetails) {
+        setLoadingData(authLoading); // Data loading is dependent on auth loading
         return;
     }
     
     setLoadingData(true);
-    let active = true; // To prevent setting state on unmounted component
+    let active = true;
 
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
     
@@ -125,7 +125,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     setExpenses(allDocs.filter((e: any) => e.branch === branchName) as Expense[]);
                     break;
                 case 'requests':
-                    setRequests(allDocs as EmployeeRequest[]);
+                     // Admins/Partners see all requests, Supervisors see their branch's requests.
+                     if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
+                        setRequests(allDocs as EmployeeRequest[]);
+                    } else if (userDetails.role === 'مشرف فرع') {
+                        setRequests(allDocs.filter((req: any) => req.employeeBranch === userDetails.branch) as EmployeeRequest[]);
+                    } else {
+                        // Employees see their own requests, which is handled in the component itself
+                        setRequests(allDocs as EmployeeRequest[]);
+                    }
                     break;
             }
         }, (error) => {
@@ -135,12 +143,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     setLoadingData(false);
 
-    // Cleanup function
     return () => {
       active = false;
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [user, currentBranch]); // Rerun when user or branch changes
+  }, [userDetails, currentBranch, authLoading]); // Rerun when userDetails or branch changes.
 
 
 
@@ -197,14 +204,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, authLoading, router]);
 
-  const isLoading = authLoading || loadingData;
-
-  if (isLoading || !user) {
+  if (authLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Logo />
-                <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+                <p className="text-muted-foreground">جاري التحقق من الهوية...</p>
+            </div>
+        </div>
+    );
+  }
+  
+  if (!userDetails) {
+      // This can happen briefly between auth state change and userDetails fetch
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <Logo />
+                <p className="text-muted-foreground">جاري تحميل بيانات المستخدم...</p>
             </div>
         </div>
     );
@@ -219,7 +236,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <SidebarInset>
                       <Header />
                       <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                          {children}
+                          {loadingData ? <p className="text-center">جاري تحميل بيانات الفرع...</p> : children}
                       </main>
                   </SidebarInset>
               </SidebarProvider>

@@ -38,15 +38,16 @@ export default function LoginPage() {
         title: "تم تسجيل الدخول بنجاح",
         description: "مرحباً بعودتك! سيتم توجيهك الآن.",
       });
+      
+      // The useEffect hook will now handle redirection once the user object is confirmed.
 
-      // The useEffect above will handle the redirection.
-    } catch (err: any) {
-      // The error is already set in the auth context,
-      // so we just show a generic toast. The alert will show the specific error.
+    } catch (err) {
+      // Error is already set in the auth context, just show a generic toast.
+      // The alert component will show the specific error message from the context.
       toast({
         variant: "destructive",
         title: "خطأ في تسجيل الدخول",
-        description: authError || "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
+        description: "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
       });
     }
   };

@@ -31,7 +31,7 @@ interface UserData {
 
 interface AuthContextType {
   user: User | null;
-  userDetails: UserData | null; 
+  userDetails: UserData | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -55,15 +55,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUserDetails = useCallback(async (firebaseUser: User) => {
+  // This function is now the single source of truth for getting user data.
+  const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     try {
+      console.log(`Fetching user details for UID: ${firebaseUser.uid}`);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
+        console.log('User document exists. Updating last login.');
         const userData = userDoc.data() as UserData;
         await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-        setUserDetails({ id: userDoc.id, ...userData });
+        return { id: userDoc.id, ...userData };
       } else {
+        console.log('User document does not exist. Creating a new one.');
         const appUser = initialUsers.find(u => u.email === firebaseUser.email);
         if (appUser) {
           const newUserData: Omit<AppUser, 'id'> & { uid: string, createdAt: any, lastLogin: any, isActive: boolean } = {
@@ -73,34 +77,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
              lastLogin: serverTimestamp(),
              isActive: true
           };
-          // This is the line that might be failing.
+          delete (newUserData as any).id;
           await setDoc(userDocRef, newUserData);
-          setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
+          console.log('New user document created successfully.');
+          return { id: userDocRef.id, ...newUserData } as UserData;
         } else {
-           setError("User profile not found in initial data.");
+           console.error("User profile not found in initial static data.");
+           throw new Error("User profile not found in initial data.");
         }
       }
     } catch (e: any) {
-      console.error("Error fetching/creating user document:", e);
-      setError("Error fetching user data. Permissions might be incorrect.");
+      console.error("Error in fetchUserDetails:", e);
+      setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
+      // Sign out to prevent inconsistent state
       await signOut(auth);
-      setUser(null);
-      setUserDetails(null);
+      return null;
     }
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      setError(null);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        await fetchUserDetails(firebaseUser);
+        fetchUserDetails(firebaseUser).then(details => {
+            setUserDetails(details);
+            setLoading(false);
+        });
       } else {
         setUser(null);
         setUserDetails(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, [fetchUserDetails]);
@@ -111,19 +118,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle fetching user details.
+      // onAuthStateChanged will handle the rest.
     } catch (error) {
       const authError = error as AuthError;
       console.error("Login Error:", authError);
-       if (authError.code === 'auth/user-not-found') {
-         setError("المستخدم غير موجود. الرجاء التأكد من البريد الإلكتروني.");
-       } else if (authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
-         setError("كلمة المرور غير صحيحة. الرجاء المحاولة مرة أخرى.");
+       if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
+         setError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
        } else {
          setError("حدث خطأ غير متوقع أثناء تسجيل الدخول.");
        }
       setLoading(false);
-      throw authError;
+      throw authError; // Re-throw to be caught in the component
     }
   };
 
