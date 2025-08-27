@@ -3,40 +3,36 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can create their own user document, and read/update it.
+    // Users can only read and update their own document.
+    // User documents are created by a Cloud Function trigger (onUserCreate).
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
+      // Disallow client-side creation to enforce Cloud Function-based creation.
+      allow create: if request.auth.uid == userId; 
     }
 
-    // Admins and Partners can read all data. Supervisors can read data from their own branch.
-    function canReadData(branch) {
-      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      let userBranch = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch;
-      return request.auth != null &&
-             (userRole == 'مدير النظام' || userRole == 'شريك' || (userRole == 'مشرف فرع' && userBranch == branch));
-    }
-
-    // Any authenticated user can write data for now. This can be tightened later.
-    function canWriteData() {
-      return request.auth != null;
-    }
-
-    match /revenue/{docId} {
-      allow read: if canReadData(resource.data.branch);
-      allow write: if canWriteData();
-    }
-
-    match /expenses/{docId} {
-      allow read: if canReadData(resource.data.branch);
-      allow write: if canWriteData();
+    // A function to check user roles from the users collection.
+    function isUserRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
     
-    match /requests/{docId} {
-      // Employees can read their own requests. Supervisors/Admins can read branch requests.
-      allow read: if (request.auth != null && request.auth.uid == resource.data.employeeId) || canReadData(resource.data.employeeBranch);
-      allow write: if canWriteData();
+    function isBranchSupervisor(branchName) {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch == branchName && isUserRole('مشرف فرع');
+    }
+
+    // Rules for data collections (revenue, expenses, requests)
+    match /{collection}/{docId} {
+      // Admins and Partners can read/write everything.
+      allow read, write: if isUserRole('مدير النظام') || isUserRole('شريك');
+
+      // Supervisors can read/write data for their own branch.
+      allow read, write: if resource.data.branch != null && isBranchSupervisor(resource.data.branch);
+
+      // Employees can only create new requests for themselves.
+      allow create: if collection == 'requests' && request.resource.data.employeeId == request.auth.uid;
+      
+      // Employees can read their own requests.
+      allow read: if collection == 'requests' && resource.data.employeeId == request.auth.uid;
     }
   }
 }

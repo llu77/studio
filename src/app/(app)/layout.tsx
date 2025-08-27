@@ -119,8 +119,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setter(docs);
             }, (error) => {
                 console.error(`Error fetching ${collectionName}:`, error);
-                // We'll rely on the auth hook to display major permission errors.
-                // Optionally, add a toast here.
             });
             unsubscribers.push(unsubscribe);
         } catch (error) {
