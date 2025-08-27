@@ -194,9 +194,29 @@ export default function ExpensesPage() {
                                     <SelectValue placeholder="اختر البند" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="بونص ومكافآت">بونص ومكافآت</SelectItem>
+                                    <SelectItem value="كهرباء سكن">كهرباء سكن</SelectItem>
+                                    <SelectItem value="اثاث/أجهزة ومعدات">اثاث/أجهزة ومعدات</SelectItem>
+                                    <SelectItem value="أغراض">أغراض</SelectItem>
+                                    <SelectItem value="إنترنت">إنترنت</SelectItem>
+                                    <SelectItem value="تذاكر طيران">تذاكر طيران</SelectItem>
+                                    <SelectItem value="صيانة">صيانة</SelectItem>
+                                    <SelectItem value="احتياجات بسيطة">احتياجات بسيطة</SelectItem>
+                                    <SelectItem value="أغراض محل">أغراض محل</SelectItem>
+                                    <SelectItem value="رسوم تجديد رخصة/سجل تجاري">رسوم تجديد رخصة/سجل تجاري</SelectItem>
+                                    <SelectItem value="طباعه ورق">طباعه ورق</SelectItem>
+                                    <SelectItem value="شهاده صحيه">شهاده صحيه</SelectItem>
+                                    <SelectItem value="اصدار تأشيرة">اصدار تأشيرة</SelectItem>
+                                    <SelectItem value="رسوم حكومية">رسوم حكومية</SelectItem>
+                                    <SelectItem value="اصدار/تجديد اقامه">اصدار/تجديد اقامه</SelectItem>
+                                    <SelectItem value="تحسينات">تحسينات</SelectItem>
+                                    <SelectItem value="ايجار محل">ايجار محل</SelectItem>
+                                    <SelectItem value="غسيل سجاد">غسيل سجاد</SelectItem>
+                                    <SelectItem value="مخالفة">مخالفة</SelectItem>
+                                    <SelectItem value="فحص طبي">فحص طبي</SelectItem>
+                                    <SelectItem value="مواصلات">مواصلات</SelectItem>
                                     <SelectItem value="فواتير">فواتير (كهرباء, ماء, انترنت)</SelectItem>
                                     <SelectItem value="رواتب">رواتب</SelectItem>
-                                    <SelectItem value="صيانة">صيانة</SelectItem>
                                     <SelectItem value="مستلزمات">مستلزمات تشغيلية</SelectItem>
                                     <SelectItem value="إيجار">إيجار</SelectItem>
                                     <SelectItem value="أخرى">أخرى</SelectItem>
