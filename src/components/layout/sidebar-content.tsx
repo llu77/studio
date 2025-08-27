@@ -27,34 +27,40 @@ import {
   LogOut,
   WalletCards,
   BrainCircuit,
+  ClipboardList, // NEW ICON
+  Briefcase, // NEW ICON
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 const menuItems = [
-  { href: "/", label: "لوحة التحكم", icon: LayoutDashboard },
-  { href: "/revenue", label: "الإيرادات", icon: TrendingUp },
-  { href: "/expenses", label: "المصاريف", icon: TrendingDown },
-  { href: "/bonuses", label: "البونص", icon: Award },
-  { href: "/requests/employees", label: "طلبات الموظفين", icon: FileText },
-  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket },
-  { href: "/users", label: "إدارة المستخدمين", icon: Users },
-  { href: "/salaries", label: "الرواتب", icon: WalletCards },
-  { href: "/reports", label: "التقارير", icon: BarChart3 },
-  { href: "/accounting-intelligence", label: "الذكاء المحاسبي", icon: BrainCircuit },
-  { href: "/settings", label: "الإعدادات", icon: Settings },
+  { href: "/", label: "لوحة التحكم", icon: LayoutDashboard, roles: ['مدير النظام', 'مشرف فرع', 'موظف', 'شريك'] },
+  { href: "/revenue", label: "الإيرادات", icon: TrendingUp, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
+  { href: "/expenses", label: "المصاريف", icon: TrendingDown, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
+  { href: "/bonuses", label: "البونص", icon: Award, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/requests/management", label: "إدارة الطلبات", icon: Briefcase, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/requests/employees", label: "طلباتي", icon: FileText, roles: ['موظف'] },
+  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/users", label: "إدارة المستخدمين", icon: Users, roles: ['مدير النظام'] },
+  { href: "/salaries", label: "الرواتب", icon: WalletCards, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/reports", label: "التقارير", icon: BarChart3, roles: ['مدير النظام', 'شريك'] },
+  { href: "/accounting-intelligence", label: "الذكاء المحاسبي", icon: BrainCircuit, roles: ['مدير النظام', 'شريك'] },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ['مدير النظام'] },
 ];
 
 export function AppSidebarContent() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, userDetails, logout } = useAuth(); // Use userDetails
   const router = useRouter();
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
+
+  const userRole = userDetails?.role;
+
+  const accessibleMenuItems = menuItems.filter(item => userRole && item.roles.includes(userRole));
 
 
   return (
@@ -67,7 +73,7 @@ export function AppSidebarContent() {
         </SidebarHeader>
         <UiSidebarContent>
           <SidebarMenu>
-            {menuItems.map((item) => (
+            {accessibleMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild

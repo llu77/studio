@@ -8,14 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Clock, CirclePlus, ListOrdered, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import React, { useState, useContext, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserContext, BranchContext, User, Role, DataContext } from "@/app/(app)/layout";
 import ResignationForm from "./ResignationForm"; 
 import { useAuth } from "@/hooks/use-auth";
 import pdfService from '@/services/pdf.service';
-
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 
@@ -37,7 +35,6 @@ const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" 
     rejected: { text: "تم الرفض", variant: "destructive", icon: X },
 };
 
-
 const getRequestTypeName = (type: string) => {
     const types: { [key: string]: string } = {
       'resignation': 'طلب استقالة',
@@ -48,94 +45,38 @@ const getRequestTypeName = (type: string) => {
       'إجازة': 'طلب إجازة',
     };
     return types[type] || type;
-  };
+};
 
+// THIS PAGE IS NOW FOR EMPLOYEES TO SUBMIT AND VIEW THEIR OWN REQUESTS
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
-    const { requests, addRequest, updateRequestStatus } = useContext(DataContext);
-    const { user: authUser } = useAuth();
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [supervisor, setSupervisor] = useState<User | null>(null);
-    const [filter, setFilter] = useState('all');
+    const { requests, addRequest } = useContext(DataContext);
+    const { user: authUser, userDetails } = useAuth();
     
-    const [employeeForResignation, setEmployeeForResignation] = useState<User | null>(null);
-
-    // Form state
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+    // Form state for new request
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
-    const [activeTab, setActiveTab] = useState('view-requests');
+    const [activeTab, setActiveTab] = useState('add-request');
 
-    useEffect(() => {
-        if (authUser) {
-            const u = users.find(u => u.email === authUser.email);
-            setCurrentUser(u || null);
-            // Default tab based on role
-            setActiveTab(u?.role === 'موظف' ? 'add-request' : 'view-requests');
-             if (u) {
-                const sup = users.find(usr => usr.branch === u.branch && usr.role === 'مشرف فرع');
-                setSupervisor(sup || null);
-                // If user is an employee, auto-select them for requests
-                if (u.role === 'موظف') {
-                    setEmployeeForResignation(u);
-                    setSelectedEmployeeId(u.id);
-                }
-            }
-        }
-    }, [authUser, users]);
-
-    useEffect(() => {
-        if (employeeForResignation) {
-            const sup = users.find(usr => usr.branch === employeeForResignation.branch && usr.role === 'مشرف فرع');
-            setSupervisor(sup || null);
-        } else {
-            setSupervisor(null);
-        }
-    }, [employeeForResignation, users]);
-
-
-    const visibleRequests = useMemo(() => {
-        if (!currentUser) return [];
-
-        let reqs = requests;
-        // Admins and partners see all requests.
-        if (currentUser.role === 'مدير النظام' || currentUser.role === 'شريك') {
-            reqs = requests;
-        } else if (currentUser.role === 'مشرف فرع') {
-            reqs = requests.filter(r => r.employeeBranch === currentUser.branch);
-        } else if (currentUser.role === 'موظف') {
-            reqs = requests.filter(r => r.employeeId === currentUser.id);
-        }
-        
-        if (filter !== 'all') {
-            return reqs.filter(r => r.status === filter);
-        }
-
-        return reqs;
-    }, [requests, currentUser, filter]);
-
-    const employeesForSelection = useMemo(() => {
-        if (!currentUser) return [];
-        if (currentUser.role === 'مدير النظام' || currentUser.role === 'شريك') {
-            return users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك');
-        }
-        if (currentUser.role === 'مشرف فرع') {
-            return users.filter(u => u.branch === currentUser.branch && u.role !== 'مدير النظام' && u.role !== 'شريك');
-        }
-        return [];
-    }, [users, currentUser]);
-
+    const myRequests = useMemo(() => {
+        if (!userDetails) return [];
+        return requests.filter(r => r.employeeId === userDetails.id);
+    }, [requests, userDetails]);
+    
+    const supervisor = useMemo(() => {
+        if (!userDetails) return null;
+        return users.find(u => u.branch === userDetails.branch && u.role === 'مشرف فرع') || null;
+    }, [users, userDetails]);
 
     const handleFormSubmit = async (newRequestData: any) => {
-        const employeeDetails = newRequestData.employeeId ? users.find(u => u.id === newRequestData.employeeId) : currentUser;
-         if(!employeeDetails) return;
+        if(!userDetails) return;
 
          const newRequest: Omit<EmployeeRequest, 'id'> = {
             date: new Date().toISOString().split('T')[0],
-            employee: employeeDetails.name,
-            employeeId: employeeDetails.id,
-            employeeBranch: employeeDetails.branch,
+            employee: userDetails.name,
+            employeeId: userDetails.id,
+            employeeBranch: userDetails.branch,
             status: 'pending', 
             ...newRequestData
         };
@@ -148,28 +89,18 @@ export default function EmployeeRequestsPage() {
             className: "bg-primary text-primary-foreground",
         });
         resetForm();
-        setActiveTab('view-requests'); 
+        setActiveTab('view-my-requests'); 
     };
 
      const resetForm = () => {
         setRequestType('');
         setRequestDetails('');
-        // Reset employee selection based on role
-        if(currentUser?.role === 'موظف') {
-            setSelectedEmployeeId(currentUser.id);
-            setEmployeeForResignation(currentUser);
-        } else {
-            setSelectedEmployeeId('');
-            setEmployeeForResignation(null);
-        }
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
         
-        const employeeId = currentUser?.role === 'موظف' ? currentUser.id : selectedEmployeeId;
-        
-        if (!requestType || !requestDetails || !employeeId) {
+        if (!requestType || !requestDetails) {
             toast({
                 variant: "destructive",
                 title: "خطأ",
@@ -180,107 +111,44 @@ export default function EmployeeRequestsPage() {
 
         handleFormSubmit({
             type: requestType,
-            details: requestDetails,
-            employeeId: employeeId
+            details: requestDetails
         });
     };
 
-    const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
-        const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || (newStatus === 'approved' ? 'تمت الموافقة' : 'تم الرفض');
-        updateRequestStatus(requestId, newStatus, notes);
-        toast({
-            title: `تم تحديث حالة الطلب بنجاح`,
-            description: `تم ${newStatus === 'approved' ? 'الموافقة على' : 'رفض'} الطلب رقم ${requestId}.`
-        });
-    };
-
-    const handlePrintRequest = async (request: EmployeeRequest) => {
-        const content = request.type === 'resignation' 
-            ? request.details 
-            : `
-              نوع الطلب: ${getRequestTypeName(request.type)}
-              الموظف: ${request.employee}
-              الفرع: ${request.employeeBranch}
-              التاريخ: ${request.date}
-              التفاصيل: ${request.details}
-              الحالة: ${statusMap[request.status].text}
-              ملاحظات: ${request.notes || 'لا يوجد'}
-            `;
-            
-        const employee = users.find(u => u.id === request.employeeId);
-        const supervisor = users.find(u => u.branch === employee?.branch && u.role === 'مشرف فرع');
-
-        await pdfService.generatePDF({
-            title: `طلب ${getRequestTypeName(request.type)}`,
-            type: 'request',
-            content: { text: content },
-            userData: employee,
-            branchData: {
-                name: employee?.branch,
-                supervisorName: supervisor?.name
-            }
-        });
-        pdfService.print();
-    };
-
-    const handlePrintAllRequests = async () => {
-        if (visibleRequests.length === 0) {
-            toast({ variant: 'destructive', title: 'لا توجد طلبات للطباعة' });
-            return;
-        }
-
-        const tableData = visibleRequests.map(req => [
-            getRequestTypeName(req.type),
-            req.employee,
-            req.employeeBranch,
-            new Date(req.date).toLocaleDateString('ar-SA'),
-            statusMap[req.status].text
-        ]);
-
-        const supervisor = users.find(u => u.branch === currentUser?.branch && u.role === 'مشرف فرع');
-        
-        await pdfService.generatePDF({
-            title: 'تقرير الطلبات',
-            type: 'report',
-            content: {
-                table: {
-                    headers: [['نوع الطلب', 'الموظف', 'الفرع', 'التاريخ', 'الحالة']],
-                    data: tableData
-                }
-            },
-            userData: currentUser,
-            branchData: {
-                name: currentUser?.branch,
-                supervisorName: supervisor?.name || 'الإدارة'
-            }
-        });
-        await pdfService.print();
-    };
-
+    if (!userDetails || userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>صفحة الموظفين</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">هذه الصفحة مخصصة للموظفين لتقديم ومتابعة طلباتهم.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+    
   return (
-    <>
-      <div className="non-printable">
+    <div className="non-printable">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
-            <TabsTrigger value="add-request">
-                <CirclePlus className="ms-2" />
-                تقديم طلب
-            </TabsTrigger>
-            <TabsTrigger value="view-requests">
-                <ListOrdered className="ms-2" />
-                {currentUser?.role === 'موظف' ? 'متابعة طلباتي' : 'متابعة الطلبات'}
-            </TabsTrigger>
+                <TabsTrigger value="add-request">
+                    <CirclePlus className="ms-2" />
+                    تقديم طلب جديد
+                </TabsTrigger>
+                <TabsTrigger value="view-my-requests">
+                    <ListOrdered className="ms-2" />
+                    متابعة طلباتي
+                </TabsTrigger>
             </TabsList>
 
             <TabsContent value="add-request" className="mt-6">
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
-                    <CardTitle>تقديم طلب موظف جديد</CardTitle>
-                    <CardDescription>
-                        {currentUser?.role === 'موظف' 
-                            ? 'يمكنك تقديم طلب لنفسك فقط.' 
-                            : 'يمكن للمشرف أو المدير تقديم طلب نيابة عن الموظفين.'}
-                    </CardDescription>
+                        <CardTitle>تقديم طلب جديد</CardTitle>
+                        <CardDescription>
+                            أهلاً بك {userDetails.name}، يمكنك تقديم طلبك من هنا.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                        <div className="space-y-2 mb-6">
@@ -300,47 +168,15 @@ export default function EmployeeRequestsPage() {
                         
                         {requestType === 'resignation' ? (
                             <div className="space-y-4 border-t pt-6">
-                                {currentUser?.role !== 'موظف' && (
-                                     <div className="space-y-2">
-                                        <Label htmlFor="employee-for-resignation">اختر الموظف لطلب الاستقالة</Label>
-                                        <Select onValueChange={(id) => setEmployeeForResignation(users.find(u => u.id === id) || null)}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="اختر الموظف" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {employeesForSelection.map(user => (
-                                                    <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                               {employeeForResignation && (
-                                     <ResignationForm 
-                                        currentUserData={employeeForResignation}
-                                        supervisorData={supervisor}
-                                        onSubmit={handleFormSubmit} 
-                                        onCancel={resetForm} 
-                                    />
-                               )}
+                                <ResignationForm 
+                                    currentUserData={userDetails}
+                                    supervisorData={supervisor}
+                                    onSubmit={handleFormSubmit} 
+                                    onCancel={resetForm} 
+                                />
                             </div>
                         ) : requestType !== '' ? (
                            <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
-                                {currentUser?.role !== 'موظف' && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="employee-name">اسم الموظف</Label>
-                                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId} required>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="اختر الموظف" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {employeesForSelection.map(user => (
-                                                    <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="request-details">تفاصيل الطلب</Label>
                                     <Textarea 
@@ -360,31 +196,15 @@ export default function EmployeeRequestsPage() {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="view-requests" className="mt-6">
+            <TabsContent value="view-my-requests" className="mt-6">
                 <Card>
-                    <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <CardTitle>{currentUser?.role === 'موظف' ? 'طلباتي' : 'إدارة طلبات الموظفين'}</CardTitle>
-                            <CardDescription>
-                                {currentUser?.role === 'موظف' ? 'تابع حالة طلباتك المقدمة.' : 'مراجعة طلبات الموظفين والموافقة عليها أو رفضها.'}
-                            </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="filters flex gap-2 overflow-x-auto pb-2">
-                                <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
-                                <Button size="sm" variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
-                                <Button size="sm" variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
-                                <Button size="sm" variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
-                            </div>
-                            <Button size="sm" variant="outline" onClick={handlePrintAllRequests}>
-                                <Printer className="ml-2 h-4 w-4" />
-                                طباعة
-                            </Button>
-                        </div>
+                    <CardHeader>
+                        <CardTitle>طلباتي</CardTitle>
+                        <CardDescription>تابع حالة طلباتك المقدمة.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                        {visibleRequests.map((req) => {
+                        {myRequests.map((req) => {
                             const statusInfo = statusMap[req.status];
                             const StatusIcon = statusInfo.icon;
                             return (
@@ -392,7 +212,6 @@ export default function EmployeeRequestsPage() {
                                      <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h3 className="text-lg font-semibold">{getRequestTypeName(req.type)}</h3>
-                                            <p className="text-sm text-muted-foreground">لـ: {req.employee} ({req.employeeBranch})</p>
                                             <p className="text-xs text-muted-foreground">بتاريخ: {new Date(req.date).toLocaleDateString('ar-SA')}</p>
                                         </div>
                                         <Badge variant={statusInfo.variant} className="gap-1">
@@ -403,51 +222,18 @@ export default function EmployeeRequestsPage() {
 
                                     <p className="mb-3 text-sm">{req.details}</p>
                                     
-                                    {req.notes && <p className="mb-3 p-2 bg-muted rounded-md text-sm"><span className="font-semibold">ملاحظات:</span> {req.notes}</p>}
-
-
-                                    <div className="flex justify-between items-end">
-                                        <Button variant="outline" size="sm" onClick={() => handlePrintRequest(req)}>
-                                            <Printer className="mr-2 h-4 w-4" />
-                                            طباعة الطلب
-                                        </Button>
-                                        {(currentUser?.role === 'مدير النظام' || currentUser?.role === 'مشرف فرع') && req.status === 'pending' && (
-                                            <div className="flex gap-1 justify-end">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusUpdate(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>موافقة</p></TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusUpdate(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>رفض</p></TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {(currentUser?.role === 'مدير النظام' || currentUser?.role === 'مشرف فرع') && req.status === 'pending' && (
-                                        <div className="admin-actions mt-4 p-3 bg-muted/50 rounded">
-                                            <Label htmlFor={`notes-${req.id}`} className="mb-2 block text-xs font-medium">ملاحظات على القرار (اختياري)</Label>
-                                            <Textarea id={`notes-${req.id}`} placeholder="أضف ملاحظات على القرار..." rows={2}/>
-                                        </div>
-                                    )}
+                                    {req.notes && <p className="mb-3 p-2 bg-muted rounded-md text-sm"><span className="font-semibold">ملاحظات الإدارة:</span> {req.notes}</p>}
                                 </div>
                             );
                         })}
                         </div>
-                         {visibleRequests.length === 0 && (
-                            <p className="py-10 text-center text-muted-foreground">لا توجد طلبات لعرضها تطابق الفلتر الحالي.</p>
+                         {myRequests.length === 0 && (
+                            <p className="py-10 text-center text-muted-foreground">لم تقم بتقديم أي طلبات بعد.</p>
                         )}
                     </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
       </div>
-    </>
   );
 }
