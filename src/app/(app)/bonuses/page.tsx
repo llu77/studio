@@ -4,13 +4,16 @@ import React, { useContext, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { Award, Users, DollarSign, ArrowDown, ArrowUp, Minus, Printer, CheckCircle } from "lucide-react";
 import { BranchContext, DataContext } from '@/app/(app)/layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { RevenueRecord } from '../revenue/page';
+import pdfService from '@/services/pdf.service'; // NEW FEATURE
+import { useAuth } from '@/hooks/use-auth'; // NEW FEATURE
+import { formatCurrency } from '@/lib/utils'; // NEW FEATURE
 
 const mockUsersData = {
     'فرع لبن': [
@@ -27,9 +30,6 @@ const mockUsersData = {
     ]
 };
 
-// NEW FEATURE: This mock data is no longer used, will rely on DataContext
-// const mockRevenueData = [ ... ];
-
 const getBonusTier = (revenue: number) => {
     if (revenue >= 3500) return { bonus: 280, level: 5, color: "text-green-500", icon: <ArrowUp className="h-4 w-4" /> };
     if (revenue >= 2900) return { bonus: 220, level: 4, color: "text-green-400", icon: <ArrowUp className="h-4 w-4" /> };
@@ -45,21 +45,21 @@ const weekLabels = ['الأسبوع الأول', 'الأسبوع الثاني', 
 export default function BonusesPage() {
   const { revenueRecords } = useContext(DataContext);
   const { currentBranch } = useContext(BranchContext);
+  const { user } = useAuth(); // NEW FEATURE
   const [selectedWeek, setSelectedWeek] = useState(0); 
   const { toast } = useToast();
+  // NEW FEATURE: State to track weekly approvals
+  const [weeklyApproval, setWeeklyApproval] = useState([false, false, false, false]);
   
   const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
   const employeesForBranch = mockUsersData[branchName as keyof typeof mockUsersData] || [];
 
-  // NEW FEATURE: Function now uses real revenue records from context
   const getWeeklyRevenueForEmployee = (employeeName: string, weekIndex: number) => {
     if (!revenueRecords) return 0;
     
-    // This logic assumes records are for the current month and divides them into 4 weeks.
     const weekRecords = revenueRecords.filter(record => {
         const recordDate = new Date(record.date);
         const dayOfMonth = recordDate.getDate();
-        // Simple weekly bucketing: Days 1-7 (week 0), 8-14 (week 1), etc.
         const week = Math.floor((dayOfMonth - 1) / 7);
         return week === weekIndex;
     });
@@ -69,7 +69,6 @@ export default function BonusesPage() {
         .filter(d => d.employeeName === employeeName)
         .reduce((sum, d) => sum + d.amount, 0);
   };
-
 
   const weeklyCalculations = useMemo(() => {
     return employeesForBranch.map(emp => {
@@ -105,9 +104,51 @@ export default function BonusesPage() {
   const selectedWeekTotalBonus = weeklyCalculations.reduce((sum, item) => sum + item.currentBonus, 0);
   const grandTotalBonus = totalCalculations.reduce((sum, item) => sum + item.totalBonus, 0);
 
-  const handleApproveBonus = () => {
+  // NEW FEATURE: Handler for weekly bonus approval
+  const handleApproveWeeklyBonus = () => {
+    const newApprovalStatus = [...weeklyApproval];
+    newApprovalStatus[selectedWeek] = true;
+    setWeeklyApproval(newApprovalStatus);
     toast({
-        title: "تم اعتماد البونص بنجاح!",
+        title: "تم اعتماد البونص الأسبوعي بنجاح!",
+        description: `تمت الموافقة على صرف بونص ${weekLabels[selectedWeek]}. يمكنك الآن طباعة الكشف.`,
+        className: "bg-primary text-primary-foreground",
+    });
+  };
+
+  // NEW FEATURE: Handler for printing weekly bonus report
+  const handlePrintWeeklyBonus = async () => {
+    const tableData = weeklyCalculations.map(emp => [
+        emp.name,
+        formatCurrency(emp.currentRevenue),
+        `المستوى ${getBonusTier(emp.currentRevenue).level}`,
+        formatCurrency(emp.currentBonus)
+    ]);
+    
+    const supervisor = { name: 'المشرف المسؤول' }; // Placeholder
+
+    await pdfService.generatePDF({
+        title: `كشف بونص ${weekLabels[selectedWeek]}`,
+        type: 'report',
+        content: {
+            table: {
+                headers: [['اسم الموظف', 'إجمالي إيراداته', 'مستوى البونص', 'مبلغ البونص']],
+                data: tableData
+            }
+        },
+        userData: user,
+        branchData: {
+            name: branchName,
+            supervisorName: supervisor.name
+        }
+    });
+
+    await pdfService.print();
+  };
+
+  const handleApproveMonthlyBonus = () => {
+    toast({
+        title: "تم اعتماد البونص الشهري بنجاح!",
         description: `سيتم صرف مبلغ ${grandTotalBonus.toLocaleString('ar-SA')} ريال للموظفين.`,
         className: "bg-primary text-primary-foreground",
     });
@@ -186,6 +227,20 @@ export default function BonusesPage() {
                   </TableBody>
               </Table>
           </CardContent>
+           {/* NEW FEATURE: Weekly Approval and Print Footer */}
+          <CardFooter className="justify-end pt-4 border-t">
+              {weeklyApproval[selectedWeek] ? (
+                  <Button onClick={handlePrintWeeklyBonus}>
+                      <Printer className="mr-2 h-4 w-4" />
+                      طباعة كشف البونص
+                  </Button>
+              ) : (
+                  <Button variant="outline" onClick={handleApproveWeeklyBonus}>
+                       <CheckCircle className="mr-2 h-4 w-4" />
+                      اعتماد وصرف بونص الأسبوع
+                  </Button>
+              )}
+          </CardFooter>
       </Card>
 
        <Card>
@@ -218,7 +273,7 @@ export default function BonusesPage() {
               </Table>
           </CardContent>
           <CardFooter className="justify-end pt-6">
-              <Button size="lg" onClick={handleApproveBonus}>
+              <Button size="lg" onClick={handleApproveMonthlyBonus}>
                   <DollarSign className="mr-2 h-4 w-4" />
                   اعتماد وصرف بونص الشهر
               </Button>
@@ -227,5 +282,3 @@ export default function BonusesPage() {
     </div>
   );
 }
-
-    
