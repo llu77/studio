@@ -99,7 +99,10 @@ export default function EmployeeRequestsPage() {
         if (!currentUser) return [];
 
         let reqs = requests;
-        if (currentUser.role === 'مشرف فرع') {
+        // Admins and partners see all requests.
+        if (currentUser.role === 'مدير النظام' || currentUser.role === 'شريك') {
+            reqs = requests;
+        } else if (currentUser.role === 'مشرف فرع') {
             reqs = requests.filter(r => r.employeeBranch === currentUser.branch);
         } else if (currentUser.role === 'موظف') {
             reqs = requests.filter(r => r.employeeId === currentUser.id);
