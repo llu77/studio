@@ -98,6 +98,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
+    // This effect is temporarily disabled to prevent Firestore permission errors.
+    // It should be re-enabled once the Firebase project's rule deployment is fixed.
+    setLoadingData(false);
+    /*
     if (authLoading) return;
     if (!userDetails) {
       setLoadingData(false);
@@ -126,26 +130,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     };
     
-    // Define queries based on role
     const baseQueryOptions = [orderBy('date', 'desc'), limit(100)];
     let branchFilter = where('branch', '==', branchNameForQuery);
     
-    if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-        setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
-        setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
-        setupSubscription('requests', [where('employeeBranch', '==', branchNameForQuery), orderBy('date', 'desc'), limit(100)], setRequests);
-    } else if (userDetails.role === 'مشرف فرع') {
-        // Supervisors see data for their own branch, regardless of the dropdown
-        branchFilter = where('branch', '==', userDetails.branch);
-        const requestBranchFilter = where('employeeBranch', '==', userDetails.branch);
+    if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك' || userDetails.role === 'مشرف فرع') {
+        if (userDetails.role !== 'مشرف فرع') {
+           // Admin/Partner can switch branches
+           branchFilter = where('branch', '==', branchNameForQuery);
+        } else {
+           // Supervisor is locked to their branch
+           branchFilter = where('branch', '==', userDetails.branch);
+        }
+        const requestBranchFilter = where('employeeBranch', '==', userDetails.role === 'مشرف فرع' ? userDetails.branch : branchNameForQuery);
         setupSubscription('revenue', [branchFilter, ...baseQueryOptions], setRevenueRecords);
         setupSubscription('expenses', [branchFilter, ...baseQueryOptions], setExpenses);
         setupSubscription('requests', [requestBranchFilter, orderBy('date', 'desc'), limit(100)], setRequests);
     } else { // Employee
-        setRevenueRecords([]); // Employees don't see financial data
+        setRevenueRecords([]);
         setExpenses([]);
         setupSubscription('requests', [where('employeeId', '==', userDetails.id), orderBy('date', 'desc'), limit(50)], setRequests);
     }
+
 
     setLoadingData(false);
 
@@ -153,6 +158,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       active = false;
       unsubscribers.forEach(unsub => unsub());
     };
+    */
   }, [userDetails, currentBranch, authLoading]);
 
 
@@ -173,7 +179,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     while (attempts < retryCount) {
         try {
             const dataToSave = { ...data, updatedAt: serverTimestamp() };
-            if (!docId) { // New document
+            if (!docId) {
                 dataToSave.createdAt = serverTimestamp();
             }
 

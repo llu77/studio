@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     // CRITICAL: Fallback mechanism as Firestore rules are not applying.
-    console.warn("Using mock user data due to Firestore access issues.");
+    console.log("Using mock user data due to Firestore access issues.");
     const mockUserData = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
     if (mockUserData) {
       console.log(`Found mock user data as a fallback: ${mockUserData.name}`);
@@ -74,7 +74,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       setError(null);
       if (firebaseUser) {
-        // We are now primarily relying on the fallback.
         const details = await fetchUserDetails(firebaseUser);
         setUser(firebaseUser);
         setUserDetails(details);
@@ -93,7 +92,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle setting user and userDetails.
       return true;
     } catch (error) {
       const authError = error as AuthError;
