@@ -1,4 +1,4 @@
-// NEW FEATURE: Integration of ResignationForm
+// NEW FEATURE: Integration of ResignationForm & Advanced Request Management System
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Clock, CirclePlus, ListOrdered, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState, useContext, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { UserContext, BranchContext } from "@/app/(app)/layout";
-import ResignationForm from "./ResignationForm"; // NEW FEATURE: Import ResignationForm
+import { UserContext, BranchContext, User, Role } from "@/app/(app)/layout";
+import ResignationForm from "./ResignationForm"; 
+import { useAuth } from "@/hooks/use-auth";
+import pdfService from "@/services/pdf.service";
+
 
 const initialRequests = [
-    { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
-    { id: 'REQ002', date: '2024-07-20', employee: 'يوسف خالد', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
-    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeBranch: 'فرع طويق', type: 'سلفة', details: '300 ريال', status: 'rejected' },
-    { id: 'REQ004', date: '2024-07-18', employee: 'فاطمة محمد', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
+    { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
+    { id: 'REQ002', date: '2024-07-20', employee: 'يوسف خالد', employeeId: 'USR003', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
+    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR004', employeeBranch: 'فرع طويق', type: 'سلفة', details: '300 ريال', status: 'rejected' },
+    { id: 'REQ004', date: '2024-07-18', employee: 'فاطمة محمد', employeeId: 'USR005', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
 ];
 
 type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -28,10 +31,12 @@ type EmployeeRequest = {
     id: string;
     date: string;
     employee: string;
+    employeeId: string;
     employeeBranch: string;
     type: string;
     details: string;
     status: RequestStatus;
+    notes?: string;
 };
 
 const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" | "default" | "destructive"; icon: React.ElementType } } = {
@@ -40,10 +45,21 @@ const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" 
     rejected: { text: "تم الرفض", variant: "destructive", icon: X },
 };
 
+
+const getRequestTypeName = (type: string) => {
+    const types: { [key: string]: string } = {
+      'resignation': 'طلب استقالة',
+      'leave': 'طلب إجازة',
+      'advance': 'طلب سلفة',
+      'other': 'طلب آخر',
+    };
+    return types[type] || type;
+  };
+
 const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], branch: string }) => (
     <div className="p-8">
         <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">تقرير طلبات الموظفين الموافق عليها</h1>
+            <h1 className="text-2xl font-bold">تقرير طلبات الموظفين</h1>
             <p className="text-muted-foreground">الفرع: {branch === 'laban' ? 'لبن' : 'طويق'}</p>
             <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
         </div>
@@ -54,6 +70,7 @@ const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], 
                     <TableHead>الموظف</TableHead>
                     <TableHead>نوع الطلب</TableHead>
                     <TableHead>التفاصيل</TableHead>
+                    <TableHead>الحالة</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -61,8 +78,9 @@ const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], 
                     <TableRow key={req.id}>
                         <TableCell>{req.date}</TableCell>
                         <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
-                        <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
+                        <TableCell><Badge variant="outline">{getRequestTypeName(req.type)}</Badge></TableCell>
                         <TableCell>{req.details}</TableCell>
+                        <TableCell>{statusMap[req.status].text}</TableCell>
                     </TableRow>
                 ))}
             </TableBody>
@@ -74,27 +92,50 @@ const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], 
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
-    const { currentBranch } = useContext(BranchContext);
+    const { user: authUser } = useAuth();
     const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
-    const printRef = React.useRef(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [filter, setFilter] = useState('all');
     
-    // State for the new request form
+    // NEW FEATURE: State for new request form
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
 
-    const approvedRequests = useMemo(() => {
-        return requests.filter(req => req.status === 'approved');
-    }, [requests]);
+    useEffect(() => {
+        if (authUser) {
+            const u = users.find(u => u.email === authUser.email);
+            setCurrentUser(u || null);
+        }
+    }, [authUser, users]);
+
+    const visibleRequests = useMemo(() => {
+        if (!currentUser) return [];
+
+        let reqs = requests;
+
+        if (currentUser.role === 'مشرف فرع') {
+            reqs = requests.filter(r => r.employeeBranch === currentUser.branch);
+        } else if (currentUser.role === 'موظف') {
+            reqs = requests.filter(r => r.employeeId === currentUser.id);
+        }
+        
+        if (filter !== 'all') {
+            return reqs.filter(r => r.status === filter);
+        }
+
+        return reqs;
+    }, [requests, currentUser, filter]);
 
     const handleFormSubmit = (newRequestData: any) => {
-        const employeeDetails = users.find(u => u.id === selectedEmployeeId);
+        const employeeDetails = users.find(u => u.email === authUser?.email);
          if(!employeeDetails) return;
 
          const newRequest: EmployeeRequest = {
             id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
             date: new Date().toISOString().split('T')[0],
             employee: employeeDetails.name,
+            employeeId: employeeDetails.id,
             employeeBranch: employeeDetails.branch,
             ...newRequestData
         };
@@ -105,6 +146,7 @@ export default function EmployeeRequestsPage() {
             description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
             className: "bg-primary text-primary-foreground",
         });
+        setRequestType(''); // Reset form
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
@@ -133,6 +175,7 @@ export default function EmployeeRequestsPage() {
             id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
             date: new Date().toISOString().split('T')[0],
             employee: employeeDetails.name,
+            employeeId: employeeDetails.id,
             employeeBranch: employeeDetails.branch,
             type: requestType,
             details: requestDetails,
@@ -153,9 +196,10 @@ export default function EmployeeRequestsPage() {
         });
     };
 
-    const handleStatusChange = (requestId: string, newStatus: RequestStatus) => {
+    const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
+        const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || '';
         setRequests(requests.map(req => 
-            req.id === requestId ? { ...req, status: newStatus } : req
+            req.id === requestId ? { ...req, status: newStatus, notes: notes } : req
         ));
         toast({
             title: `تم تحديث حالة الطلب بنجاح`,
@@ -163,16 +207,36 @@ export default function EmployeeRequestsPage() {
         });
     };
 
-    const handlePrint = () => {
-        window.print();
-    }
+    const handlePrintRequest = async (request: EmployeeRequest) => {
+        const content = request.type === 'resignation' 
+            ? request.details // Assuming resignation details are stored here
+            : `
+              نوع الطلب: ${getRequestTypeName(request.type)}
+              الموظف: ${request.employee}
+              الفرع: ${request.employeeBranch}
+              التاريخ: ${request.date}
+              التفاصيل: ${request.details}
+              الحالة: ${statusMap[request.status].text}
+            `;
+            
+        const employee = users.find(u => u.id === request.employeeId);
+        const supervisor = users.find(u => u.branch === employee?.branch && u.role === 'مشرف فرع');
 
+        await pdfService.generatePDF({
+            title: `طلب ${getRequestTypeName(request.type)}`,
+            type: 'request',
+            content: { text: content },
+            userData: employee,
+            branchData: {
+                name: employee?.branch,
+                supervisorName: supervisor?.name
+            }
+        });
+        pdfService.print();
+    };
 
   return (
     <>
-      <div className="printable-content hidden" ref={printRef}>
-        <PrintableRequests requests={approvedRequests} branch={currentBranch} />
-      </div>
       <div className="non-printable">
         <Tabs defaultValue="view-requests" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
@@ -190,7 +254,7 @@ export default function EmployeeRequestsPage() {
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
                     <CardTitle>تقديم طلب موظف جديد</CardTitle>
-                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين (استقالة, سلفة, إجازة, إلخ).</CardDescription>
+                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين أو يمكن للموظف تقديم طلب لنفسه.</CardDescription>
                     </CardHeader>
                     <CardContent>
                        <div className="space-y-2 mb-6">
@@ -210,22 +274,24 @@ export default function EmployeeRequestsPage() {
                         
                         {/* NEW FEATURE: Render ResignationForm or other forms based on selection */}
                         {requestType === 'resignation' ? (
-                            <ResignationForm onSubmit={handleFormSubmit} />
+                            <ResignationForm onSubmit={handleFormSubmit} onCancel={() => setRequestType('')} />
                         ) : requestType !== '' ? (
                            <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="employee-name">اسم الموظف</Label>
-                                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="اختر الموظف" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {users.filter(u => u.role !== 'مدير النظام').map(user => (
-                                                <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {currentUser?.role !== 'موظف' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="employee-name">اسم الموظف (إذا كنت تقدم نيابة عنه)</Label>
+                                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="اختر الموظف" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                                    <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="request-details">تفاصيل الطلب</Label>
                                     <Textarea 
@@ -251,68 +317,70 @@ export default function EmployeeRequestsPage() {
                             <CardTitle>إدارة طلبات الموظفين</CardTitle>
                             <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
                         </div>
-                        <Button variant="outline" onClick={handlePrint} disabled={approvedRequests.length === 0}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            طباعة الطلبات الموافق عليها
-                        </Button>
+                        <div className="filters flex gap-2 overflow-x-auto pb-2">
+                            <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
+                            <Button variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
+                            <Button variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
+                            <Button variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>التاريخ</TableHead>
-                                        <TableHead>الموظف</TableHead>
-                                        <TableHead>نوع الطلب</TableHead>
-                                        <TableHead>التفاصيل</TableHead>
-                                        <TableHead>الحالة</TableHead>
-                                        <TableHead className="text-left">إجراء</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                {requests.map((req) => {
-                                    const statusInfo = statusMap[req.status];
-                                    const StatusIcon = statusInfo.icon;
-                                    return (
-                                        <TableRow key={req.id}>
-                                            <TableCell className="whitespace-nowrap">{req.date}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
-                                            <TableCell><Badge variant="outline">{req.type}</Badge></TableCell>
-                                            <TableCell>{req.details}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={statusInfo.variant} className="gap-1">
-                                                    <StatusIcon className="h-3 w-3" />
-                                                    {statusInfo.text}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-left">
-                                                {req.status === 'pending' && (
-                                                    <div className="flex gap-1 justify-end">
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusChange(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>موافقة</p></TooltipContent>
-                                                            </Tooltip>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusChange(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>رفض</p></TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                                </TableBody>
-                            </Table>
+                        <div className="space-y-4">
+                        {visibleRequests.map((req) => {
+                            const statusInfo = statusMap[req.status];
+                            const StatusIcon = statusInfo.icon;
+                            return (
+                                <div key={req.id} className="request-card border rounded-lg p-4">
+                                     <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="text-lg font-semibold">{getRequestTypeName(req.type)}</h3>
+                                            <p className="text-sm text-muted-foreground">لـ: {req.employee} ({req.employeeBranch})</p>
+                                            <p className="text-xs text-muted-foreground">بتاريخ: {req.date}</p>
+                                        </div>
+                                        <Badge variant={statusInfo.variant} className="gap-1">
+                                            <StatusIcon className="h-3 w-3" />
+                                            {statusInfo.text}
+                                        </Badge>
+                                    </div>
+
+                                    <p className="mb-3">{req.details}</p>
+
+                                    <div className="flex justify-between items-end">
+                                        <Button variant="outline" size="sm" onClick={() => handlePrintRequest(req)}>
+                                            <Printer className="mr-2 h-4 w-4" />
+                                            طباعة الطلب
+                                        </Button>
+                                        {(currentUser?.role === 'مدير النظام' || currentUser?.role === 'مشرف فرع') && req.status === 'pending' && (
+                                            <div className="flex gap-1 justify-end">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusUpdate(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>موافقة</p></TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusUpdate(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>رفض</p></TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {(currentUser?.role === 'مدير النظام' || currentUser?.role === 'مشرف فرع') && req.status === 'pending' && (
+                                        <div className="admin-actions mt-4 p-3 bg-muted/50 rounded">
+                                            <Label htmlFor={`notes-${req.id}`} className="mb-2 block">ملاحظات (اختياري)</Label>
+                                            <Textarea id={`notes-${req.id}`} placeholder="أضف ملاحظات على القرار..." rows={2}/>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                         </div>
-                         {requests.length === 0 && (
-                            <p className="py-10 text-center text-muted-foreground">لا توجد طلبات لعرضها حالياً.</p>
+                         {visibleRequests.length === 0 && (
+                            <p className="py-10 text-center text-muted-foreground">لا توجد طلبات لعرضها تطابق الفلتر الحالي.</p>
                         )}
                     </CardContent>
                 </Card>
