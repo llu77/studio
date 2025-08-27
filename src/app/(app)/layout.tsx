@@ -11,8 +11,9 @@ import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
 import { Expense } from "./expenses/page";
 // NEW FEATURE: Import firestore functions for real-time sync
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { EmployeeRequest } from "./requests/employees/page";
 
 
 const initialUsers = [
@@ -66,6 +67,9 @@ export const DataContext = React.createContext<{
     expenses: Expense[];
     addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
     deleteExpense: (id: string) => Promise<void>;
+    requests: EmployeeRequest[];
+    addRequest: (request: Omit<EmployeeRequest, 'id'>) => Promise<void>;
+    updateRequestStatus: (id: string, status: EmployeeRequest['status'], notes?: string) => Promise<void>;
     loadingData: boolean; // NEW FEATURE: Add loading state
 }>({
     revenueRecords: [],
@@ -74,6 +78,9 @@ export const DataContext = React.createContext<{
     expenses: [],
     addExpense: async () => {},
     deleteExpense: async () => {},
+    requests: [],
+    addRequest: async () => {},
+    updateRequestStatus: async () => {},
     loadingData: true, // NEW FEATURE: Default to true
 });
 
@@ -87,6 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // --- Centralized State ---
   const [revenueRecords, setRevenueRecords] = useState<RevenueRecord[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [requests, setRequests] = useState<EmployeeRequest[]>([]);
   // NEW FEATURE: Add loading state for data fetching
   const [loadingData, setLoadingData] = useState(true);
 
@@ -116,10 +124,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setLoadingData(false);
     });
 
+    // Listener for Employee Requests
+    const requestsQuery = query(collection(db, 'requests'), orderBy('date', 'desc'));
+    const unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
+        const requestRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmployeeRequest));
+        setRequests(requestRecords);
+        setLoadingData(false);
+    }, (error) => {
+        console.error("Error fetching requests: ", error);
+        setLoadingData(false);
+    });
+
     // Cleanup listeners on unmount
     return () => {
         unsubscribeRevenue();
         unsubscribeExpenses();
+        unsubscribeRequests();
     };
   }, []);
 
@@ -165,6 +185,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, 'expenses', id));
   }
 
+  // NEW: Add request to Firestore
+  const addRequest = async (request: Omit<EmployeeRequest, 'id'>) => {
+      await addDoc(collection(db, 'requests'), request);
+  };
+
+  // NEW: Update request status in Firestore
+  const updateRequestStatus = async (id: string, status: EmployeeRequest['status'], notes?: string) => {
+      const requestDocRef = doc(db, 'requests', id);
+      await updateDoc(requestDocRef, { status, notes });
+  };
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -188,7 +219,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <UserContext.Provider value={{ users, addUser, deleteUser }}>
         <BranchContext.Provider value={{ currentBranch, setCurrentBranch }}>
-          <DataContext.Provider value={{ revenueRecords, addRevenueRecord, deleteRevenueRecord, expenses, addExpense, deleteExpense, loadingData }}>
+          <DataContext.Provider value={{ revenueRecords, addRevenueRecord, deleteRevenueRecord, expenses, addExpense, deleteExpense, requests, addRequest, updateRequestStatus, loadingData }}>
               <SidebarProvider>
                   <AppSidebarContent />
                   <SidebarInset>
@@ -203,3 +234,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
+
+    

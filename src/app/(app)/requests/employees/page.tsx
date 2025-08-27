@@ -11,22 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import React, { useState, useContext, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { UserContext, BranchContext, User, Role } from "@/app/(app)/layout";
+import { UserContext, BranchContext, User, Role, DataContext } from "@/app/(app)/layout";
 import ResignationForm from "./ResignationForm"; 
 import { useAuth } from "@/hooks/use-auth";
 import pdfService from '@/services/pdf.service';
 
 
-const initialRequests = [
-    { id: 'REQ001', date: '2024-07-21', employee: 'محمود عماره', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' as const, notes: 'موافقة للمساعدة' },
-    { id: 'REQ002', date: '2024-07-20', employee: 'علاء ناصر', employeeId: 'USR003', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' as const },
-    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR001', employeeBranch: 'فرع لبن', type: 'سلفة', details: '300 ريال', status: 'rejected' as const, notes: 'تم تجاوز الحد المسموح' },
-    { id: 'REQ004', date: '2024-07-18', employee: 'فارس', employeeId: 'USR007', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' as const },
-];
+export type RequestStatus = 'pending' | 'approved' | 'rejected';
 
-type RequestStatus = 'pending' | 'approved' | 'rejected';
-
-type EmployeeRequest = {
+export type EmployeeRequest = {
     id: string;
     date: string;
     employee: string;
@@ -60,13 +53,12 @@ const getRequestTypeName = (type: string) => {
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
+    const { requests, addRequest, updateRequestStatus } = useContext(DataContext);
     const { user: authUser } = useAuth();
-    const [requests, setRequests] = useState<EmployeeRequest[]>(initialRequests);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [supervisor, setSupervisor] = useState<User | null>(null);
     const [filter, setFilter] = useState('all');
     
-    // NEW: State for resignation form flow
     const [employeeForResignation, setEmployeeForResignation] = useState<User | null>(null);
 
     // Form state
@@ -92,7 +84,6 @@ export default function EmployeeRequestsPage() {
         }
     }, [authUser, users]);
 
-    // NEW: Effect to find supervisor when employee for resignation changes
     useEffect(() => {
         if (employeeForResignation) {
             const sup = users.find(usr => usr.branch === employeeForResignation.branch && usr.role === 'مشرف فرع');
@@ -120,12 +111,11 @@ export default function EmployeeRequestsPage() {
         return reqs;
     }, [requests, currentUser, filter]);
 
-    const handleFormSubmit = (newRequestData: any) => {
+    const handleFormSubmit = async (newRequestData: any) => {
         const employeeDetails = newRequestData.employeeId ? users.find(u => u.id === newRequestData.employeeId) : currentUser;
          if(!employeeDetails) return;
 
-         const newRequest: EmployeeRequest = {
-            id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
+         const newRequest: Omit<EmployeeRequest, 'id'> = {
             date: new Date().toISOString().split('T')[0],
             employee: employeeDetails.name,
             employeeId: employeeDetails.id,
@@ -134,7 +124,8 @@ export default function EmployeeRequestsPage() {
             ...newRequestData
         };
 
-        setRequests([newRequest, ...requests]);
+        await addRequest(newRequest);
+
          toast({
             title: "تم إرسال الطلب بنجاح",
             description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
@@ -177,9 +168,7 @@ export default function EmployeeRequestsPage() {
 
     const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
         const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || (newStatus === 'approved' ? 'تمت الموافقة' : 'تم الرفض');
-        setRequests(requests.map(req => 
-            req.id === requestId ? { ...req, status: newStatus, notes: notes } : req
-        ));
+        updateRequestStatus(requestId, newStatus, notes);
         toast({
             title: `تم تحديث حالة الطلب بنجاح`,
             description: `تم ${newStatus === 'approved' ? 'الموافقة على' : 'رفض'} الطلب رقم ${requestId}.`
@@ -438,3 +427,5 @@ export default function EmployeeRequestsPage() {
     </>
   );
 }
+
+    
