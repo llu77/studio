@@ -21,20 +21,18 @@ type ReportType = 'revenue' | 'expenses' | 'profit_loss';
 
 export default function ReportsPage() {
     const { revenueRecords, expenses } = useContext(DataContext);
-    const { currentBranch, setCurrentBranch } = useContext(BranchContext);
+    const { currentBranch } = useContext(BranchContext);
     const { user } = useAuth();
     const { toast } = useToast();
 
-    // NEW FEATURE: State management for report generation
     const [reportType, setReportType] = useState<ReportType>('revenue');
-    const [branch, setBranch] = useState(currentBranch);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [reportData, setReportData] = useState<any[]>([]);
     const [reportTitle, setReportTitle] = useState('');
 
     const handleGenerateReport = () => {
-        if (!reportType || !branch || !startDate || !endDate) {
+        if (!reportType || !startDate || !endDate) {
             toast({
                 variant: "destructive",
                 title: "بيانات ناقصة",
@@ -48,20 +46,19 @@ export default function ReportsPage() {
 
         let data;
         let title;
+        const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
 
         if (reportType === 'revenue') {
-            title = `تقرير الإيرادات لفرع ${branch === 'laban' ? 'لبن' : 'طويق'}`;
+            title = `تقرير الإيرادات لفرع ${branchName}`;
             data = revenueRecords.filter(r => {
                 const rDate = new Date(r.date);
-                // Note: Branch filtering is implicit as we assume data context is branch-specific.
-                // A more robust implementation would filter by r.branch if data was global.
-                return rDate >= sDate && rDate <= eDate;
+                return r.branch === branchName && rDate >= sDate && rDate <= eDate;
             });
         } else {
-            title = `تقرير المصروفات لفرع ${branch === 'laban' ? 'لبن' : 'طويق'}`;
+            title = `تقرير المصروفات لفرع ${branchName}`;
             data = expenses.filter(e => {
                 const eDateObj = new Date(e.date);
-                 return eDateObj >= sDate && eDateObj <= eDate && (branch === 'laban' ? e.branch === 'فرع لبن' : e.branch === 'فرع طويق');
+                return e.branch === branchName && eDateObj >= sDate && eDateObj <= eDate;
             });
         }
         
@@ -74,7 +71,6 @@ export default function ReportsPage() {
         });
     };
 
-    // NEW FEATURE: PDF export functionality
     const handleExportPdf = async () => {
         if (reportData.length === 0) {
             toast({ variant: 'destructive', title: 'لا توجد بيانات للتصدير' });
@@ -103,7 +99,7 @@ export default function ReportsPage() {
             ]);
         }
         
-        const supervisor = { name: 'المشرف المسؤول' }; // Placeholder
+        const supervisor = { name: 'المشرف المسؤول' }; 
 
         await pdfService.generatePDF({
             title: reportTitle,
@@ -113,7 +109,7 @@ export default function ReportsPage() {
             },
             userData: user,
             branchData: {
-                name: branch === 'laban' ? 'فرع لبن' : 'فرع طويق',
+                name: currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق',
                 supervisorName: supervisor.name
             }
         });
@@ -170,10 +166,10 @@ export default function ReportsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>إنشاء تقرير مخصص</CardTitle>
-                <CardDescription>اختر نوع التقرير، الفرع، والنطاق الزمني لعرض البيانات وتصديرها.</CardDescription>
+                <CardDescription>اختر نوع التقرير والنطاق الزمني لعرض البيانات الخاصة بالفرع الحالي وتصديرها.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 items-end">
                     <div>
                         <Label htmlFor="report-type">نوع التقرير</Label>
                         <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
@@ -183,20 +179,6 @@ export default function ReportsPage() {
                             <SelectContent>
                                 <SelectItem value="revenue">تقرير الإيرادات</SelectItem>
                                 <SelectItem value="expenses">تقرير المصروفات</SelectItem>
-                                {/* <SelectItem value="profit_loss">تقرير الأرباح والخسائر</SelectItem> */}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div>
-                        <Label htmlFor="report-branch">الفرع</Label>
-                        <Select value={branch} onValueChange={setBranch}>
-                            <SelectTrigger id="report-branch">
-                                <SelectValue placeholder="اختر الفرع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {/* <SelectItem value="all">كافة الفروع</SelectItem> */}
-                                <SelectItem value="laban">فرع لبن</SelectItem>
-                                <SelectItem value="tuwaiq">فرع طويق</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

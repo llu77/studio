@@ -26,7 +26,7 @@ export default function RevenuePage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="add-revenue" className="mt-6">
-          <RevenueForm onSave={addRevenueRecord} />
+          <RevenueForm onSave={addRevenueRecord as any} />
         </TabsContent>
         <TabsContent value="view-records" className="mt-6">
           <RevenueTable records={revenueRecords} onDelete={deleteRevenueRecord} />

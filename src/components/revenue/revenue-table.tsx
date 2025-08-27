@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/tooltip"
 import { BranchContext } from "@/app/(app)/layout";
 import { useToast } from "@/hooks/use-toast";
-import pdfService from '@/services/pdf.service'; // NEW FEATURE
-import { useAuth } from '@/hooks/use-auth'; // NEW FEATURE
+import pdfService from '@/services/pdf.service';
+import { useAuth } from '@/hooks/use-auth';
 
 
 type RevenueDistribution = {
@@ -34,6 +34,7 @@ export type RevenueRecord = {
   card: number;
   distribution: RevenueDistribution[];
   status: "Matched" | "Discrepancy" | "Unbalanced";
+  branch: string;
   discrepancyReason?: string;
 };
 
@@ -49,9 +50,6 @@ const statusTextMap: { [key in RevenueRecord['status']]: string } = {
     Unbalanced: 'فرق بالتوزيع'
 }
 
-// This component is no longer needed as we use the PDF service
-// const PrintableRevenue = ({ records, branch }: { records: RevenueRecord[], branch: string }) => ( ... );
-
 interface RevenueTableProps {
     records: RevenueRecord[];
     onDelete: (id: string) => void;
@@ -62,7 +60,7 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filteredData, setFilteredData] = React.useState(records);
   const { currentBranch } = React.useContext(BranchContext);
-  const { user } = useAuth(); // NEW FEATURE
+  const { user } = useAuth(); 
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -74,7 +72,6 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
     setFilteredData(results);
   }, [searchTerm, records]);
 
-  // NEW FEATURE: Unified printing using PDF Service
   const handlePrint = async () => {
     if (filteredData.length === 0) {
         toast({ variant: 'destructive', title: 'لا توجد بيانات للطباعة' });
@@ -89,7 +86,7 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
         statusTextMap[rec.status]
     ]);
 
-    const supervisor = { name: 'المشرف المسؤول' }; // Placeholder
+    const supervisor = { name: 'المشرف المسؤول' }; 
 
     await pdfService.generatePDF({
         title: 'تقرير سجل الإيرادات',
@@ -127,7 +124,6 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
 
   return (
     <>
-      {/* The old printable component is removed */}
       <div className="non-printable">
         <Card>
             <CardHeader>
@@ -170,7 +166,7 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
                       <TableBody>
                           {filteredData.map((record) => (
                           <TableRow key={record.id}>
-                              <TableCell className="font-medium whitespace-nowrap">{record.id}</TableCell>
+                              <TableCell className="font-medium whitespace-nowrap">{record.id.substring(0, 8)}</TableCell>
                               <TableCell className="whitespace-nowrap">{record.date}</TableCell>
                               <TableCell className="whitespace-nowrap">{record.totalRevenue.toFixed(2)} ريال</TableCell>
                               <TableCell>

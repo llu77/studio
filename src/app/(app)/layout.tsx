@@ -10,7 +10,6 @@ import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
 import { Expense } from "./expenses/page";
-// NEW FEATURE: Import firestore functions for real-time sync
 import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EmployeeRequest } from "./requests/employees/page";
@@ -62,7 +61,7 @@ export const UserContext = React.createContext<{
 // NEW: Centralized Data Context
 export const DataContext = React.createContext<{
     revenueRecords: RevenueRecord[];
-    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>) => Promise<void>;
+    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => Promise<void>;
     deleteRevenueRecord: (id: string) => Promise<void>;
     expenses: Expense[];
     addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
@@ -81,7 +80,7 @@ export const DataContext = React.createContext<{
     requests: [],
     addRequest: async () => {},
     updateRequestStatus: async () => {},
-    loadingData: true, // NEW FEATURE: Default to true
+    loadingData: true,
 });
 
 
@@ -95,53 +94,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [revenueRecords, setRevenueRecords] = useState<RevenueRecord[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
-  // NEW FEATURE: Add loading state for data fetching
   const [loadingData, setLoadingData] = useState(true);
 
-  // --- FIX: Loading state management ---
-  const loadingCounter = useRef(3); // 3 listeners: revenue, expenses, requests
+  const loadingCounter = useRef(3); 
 
   const onDataLoaded = () => {
     loadingCounter.current -= 1;
-    if (loadingCounter.current === 0) {
+    if (loadingCounter.current <= 0) {
       setLoadingData(false);
     }
   };
 
-
-  // NEW FEATURE: Real-time data fetching from Firestore
   useEffect(() => {
-    if (!user) return; // Wait for user to be authenticated
+    if (!user) return;
     
-    loadingCounter.current = 3;
     setLoadingData(true);
+    loadingCounter.current = 3;
 
-    const collections = [
-      { name: 'revenue', setter: setRevenueRecords, orderByField: 'date' },
-      { name: 'expenses', setter: setExpenses, orderByField: 'date' },
-      { name: 'requests', setter: setRequests, orderByField: 'date' }
-    ];
+    const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
 
-    const unsubscribes = collections.map(({ name, setter, orderByField }) => {
-      const q = query(collection(db, name), orderBy(orderByField, 'desc'));
-      return onSnapshot(q, 
-        (snapshot) => {
-          const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setter(records as any);
-          onDataLoaded();
-        }, 
-        (error) => {
-          console.error(`Error fetching ${name}: `, error);
-          onDataLoaded(); // Decrement counter even on error to prevent getting stuck
-        }
-      );
-    });
+    // Revenue Listener
+    const revenueQuery = query(collection(db, 'revenue'), orderBy('date', 'desc'));
+    const unsubRevenue = onSnapshot(revenueQuery, 
+      (snapshot) => {
+        const allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as RevenueRecord[];
+        setRevenueRecords(allRecords.filter(r => r.branch === branchName));
+        onDataLoaded();
+      }, 
+      (error) => {
+        console.error("Error fetching revenue: ", error);
+        onDataLoaded();
+      }
+    );
 
-    // Cleanup listeners on unmount
+    // Expenses Listener
+    const expensesQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const unsubExpenses = onSnapshot(expensesQuery,
+      (snapshot) => {
+        const allExpenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Expense[];
+        setExpenses(allExpenses.filter(e => e.branch === branchName));
+        onDataLoaded();
+      },
+      (error) => {
+        console.error("Error fetching expenses: ", error);
+        onDataLoaded();
+      }
+    );
+
+    // Requests Listener
+    const requestsQuery = query(collection(db, 'requests'), orderBy('date', 'desc'));
+    const unsubRequests = onSnapshot(requestsQuery,
+      (snapshot) => {
+        const allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EmployeeRequest[];
+        setRequests(allRequests); // Requests are filtered by role in their respective pages
+        onDataLoaded();
+      },
+      (error) => {
+        console.error("Error fetching requests: ", error);
+        onDataLoaded();
+      }
+    );
+    
     return () => {
-      unsubscribes.forEach(unsubscribe => unsubscribe());
+      unsubRevenue();
+      unsubExpenses();
+      unsubRequests();
     };
-  }, [user]);
+  }, [user, currentBranch]);
 
 
 
@@ -153,8 +172,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
   };
 
-  // NEW FEATURE: Modified to write to Firestore
-  const addRevenueRecord = async (record: Omit<RevenueRecord, 'id' | 'status'>) => {
+  const addRevenueRecord = async (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => {
     const isMismatched = Math.abs((record.cash + record.card) - record.totalRevenue) > 0.01;
     const distributedTotal = record.distribution.reduce((acc, dist) => acc + (dist.amount || 0), 0);
     const isDistributionUnbalanced = Math.abs(distributedTotal - record.totalRevenue) > 0.01;
@@ -166,31 +184,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       status = 'Discrepancy';
     }
 
-    const newRecord = { ...record, status };
+    const branchName = branch === 'laban' ? 'فرع لبن' : 'فرع طويق';
+    const newRecord = { ...record, status, branch: branchName };
     await addDoc(collection(db, 'revenue'), newRecord);
   };
   
-  // NEW FEATURE: Modified to delete from Firestore
   const deleteRevenueRecord = async (id: string) => {
     await deleteDoc(doc(db, 'revenue', id));
   };
   
-  // NEW FEATURE: Modified to write to Firestore
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
     await addDoc(collection(db, 'expenses'), expense);
   }
 
-  // NEW FEATURE: Modified to delete from Firestore
   const deleteExpense = async (id: string) => {
     await deleteDoc(doc(db, 'expenses', id));
   }
 
-  // NEW: Add request to Firestore
   const addRequest = async (request: Omit<EmployeeRequest, 'id'>) => {
       await addDoc(collection(db, 'requests'), request);
   };
 
-  // NEW: Update request status in Firestore
   const updateRequestStatus = async (id: string, status: EmployeeRequest['status'], notes?: string) => {
       const requestDocRef = doc(db, 'requests', id);
       await updateDoc(requestDocRef, { status, notes });

@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, MinusCircle, PlusCircle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { UserContext } from "@/app/(app)/layout";
+import { UserContext, BranchContext } from "@/app/(app)/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { RevenueRecord } from "./revenue-table";
 
@@ -49,13 +49,14 @@ const revenueFormSchema = z.object({
 type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 
 interface RevenueFormProps {
-    onSave: (data: Omit<RevenueRecord, 'id' | 'status'>) => void;
+    onSave: (data: Omit<RevenueRecord, 'id' | 'status' | 'branch'>, branch: string) => void;
 }
 
 
 export function RevenueForm({ onSave }: RevenueFormProps) {
     const { toast } = useToast();
     const { users } = useContext(UserContext);
+    const { currentBranch } = useContext(BranchContext);
 
     const form = useForm<RevenueFormValues>({
         resolver: zodResolver(revenueFormSchema),
@@ -93,7 +94,7 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
     );
 
     const onSubmit: SubmitHandler<RevenueFormValues> = (data) => {
-        onSave(data);
+        onSave(data, currentBranch);
         toast({
             title: "نجاح",
             description: "تم حفظ بيانات الإيراد بنجاح.",
