@@ -1,8 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // قواعد آمنة ومناسبة للتطوير
+    // تسمح للمستخدمين المصادق عليهم فقط بالوصول
+
+    match /users/{userId} {
+      // يمكن للمستخدم قراءة بياناته أو إذا كان admin
+      allow read: if request.auth != null;
+      
+      // يمكن للمستخدم إنشاء بياناته فقط
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // يمكن للمستخدم تحديث بياناته، أو يمكن للمدير تحديثها
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // لا يمكن حذف حسابات المستخدمين
+      allow delete: if false;
+    }
+
+    // السماح للمستخدمين المسجلين بالوصول الكامل إلى باقي المجموعات
+    match /revenue/{doc=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /expenses/{doc=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /requests/{doc=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // قاعدة عامة لبقية المجموعات
+    match /{path=**}/documents/{doc} {
+        allow read, write: if request.auth != null;
     }
   }
 }

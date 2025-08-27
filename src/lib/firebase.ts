@@ -1,8 +1,8 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-// NEW FEATURE: Import firestore and persistence
-import { getFirestore, enableIndexedDbPersistence, terminate } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -14,31 +14,22 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Log the project ID to verify it's being loaded correctly
+console.log("Firebase Project ID:", firebaseConfig.projectId);
+
 // Initialize Firebase
 let app: FirebaseApp;
-let auth: Auth;
-let db;
-
 if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
 } else {
     app = getApp();
 }
 
-auth = getAuth(app);
-db = getFirestore(app);
+const auth: Auth = getAuth(app);
+const db = getFirestore(app);
 
-// Enable Firestore persistence
-if (typeof window !== 'undefined') {
-    enableIndexedDbPersistence(db)
-      .catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.warn('Firestore persistence failed: Multiple tabs open. Persistence will be enabled in one tab only.');
-        } else if (err.code == 'unimplemented') {
-            console.warn('Firestore persistence failed: The current browser does not support all of the features required to enable persistence.');
-        }
-    });
-}
-
+// Note: enableIndexedDbPersistence is deprecated and persistence is enabled by default
+// on most browsers. Explicit configuration can be done via initializeFirestore if needed,
+// but the default behavior is often sufficient.
 
 export { app, auth, db };

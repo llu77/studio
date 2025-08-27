@@ -44,32 +44,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+      setLoading(true);
       if (user) {
-        setLoading(true);
+        setUser(user);
         const userDocRef = doc(db, 'users', user.uid);
         try {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
               setUserDetails({ id: userDoc.id, ...userDoc.data() } as UserData);
             } else {
+                console.warn("User document not found for UID:", user.uid, "Might be a new user.");
                 const appUser = initialUsers.find(u => u.email === user.email);
                 if (appUser) {
-                    await setDoc(userDocRef, { ...appUser, uid: user.uid, createdAt: serverTimestamp(), lastLogin: serverTimestamp(), isActive: true });
-                    setUserDetails({ id: userDocRef.id, ...appUser } as UserData);
+                    const newUserData = { ...appUser, uid: user.uid, createdAt: serverTimestamp(), lastLogin: serverTimestamp(), isActive: true };
+                    await setDoc(userDocRef, newUserData);
+                    setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
+                } else {
+                    setUserDetails(null); 
                 }
             }
         } catch (error) {
-            console.error("Error fetching or creating user document:", error);
-            // Handle error, maybe sign out user
+            console.error("Error fetching/creating user document:", error);
             await signOut(auth);
             setUserDetails(null);
         }
-        setLoading(false);
       } else {
+        setUser(null);
         setUserDetails(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -121,4 +124,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
