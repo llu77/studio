@@ -16,15 +16,10 @@ import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firest
 import { initialUsers } from '@/app/(app)/layout';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
 
-interface UserData {
+interface UserData extends AppUser {
   uid: string;
-  email: string;
-  name: string;
-  role: Role;
-  branch: Branch;
-  id?: string;
-  createdAt?: Timestamp | any;
-  lastLogin?: Timestamp | any;
+  createdAt?: Timestamp;
+  lastLogin?: Timestamp;
   isActive?: boolean;
 }
 
@@ -35,6 +30,7 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,49 +49,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const clearError = () => setError(null);
+
   const fetchUserDetails = useCallback(async (firebaseUser: User): Promise<UserData | null> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
-    try {
-      console.log(`Fetching user details for UID: ${firebaseUser.uid}`);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as UserData;
-        await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-        return { id: userDoc.id, ...userData };
-      } else {
-        const appUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
-        if (appUser) {
-          const newUserData: Omit<AppUser, 'id'> & { uid: string, createdAt: any, lastLogin: any, isActive: boolean } = {
-             ...appUser,
-             uid: firebaseUser.uid,
-             createdAt: serverTimestamp(),
-             lastLogin: serverTimestamp(),
-             isActive: true
-          };
-          delete (newUserData as any).id;
-          await setDoc(userDocRef, newUserData);
-          return { id: userDocRef.id, ...newUserData } as UserData;
+    let attempts = 0;
+    const maxAttempts = 5;
+    const delay = 1000;
+
+    while(attempts < maxAttempts) {
+      try {
+        console.log(`Fetching user details for UID: ${firebaseUser.uid}, Attempt: ${attempts + 1}`);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          console.log("User document found in Firestore.");
+          const userData = userDoc.data() as UserData;
+          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+          return { ...userData, id: userDoc.id };
         } else {
-          // Fallback to mock user data if Firestore fails temporarily
-           const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
-            if (mockUser) {
-              console.warn("Firestore access failed. Falling back to mock user data.");
-              return {
-                uid: firebaseUser.uid,
-                email: mockUser.email,
-                name: mockUser.name,
-                role: mockUser.role,
-                branch: mockUser.branch,
-                id: mockUser.id,
-              } as UserData;
-            }
+           console.log("User document not found, waiting for Cloud Function to create it...");
+           attempts++;
+           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay));
         }
+
+      } catch (e: any) {
+        console.error(`Error in fetchUserDetails (Attempt ${attempts + 1}):`, e);
+        attempts++;
+        if(attempts >= maxAttempts) {
+           setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
+           return null;
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-    } catch (e: any) {
-      console.error("Error in fetchUserDetails:", e);
-      setError(`Error fetching user data: ${e.message}. Please check Firestore rules and network.`);
-      return null;
     }
+    
+    setError("Failed to fetch user details after multiple attempts. The user document might not exist or there are persistent permission issues.");
+    // Fallback to mock data if all attempts fail, to allow UI to render
+    const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
+    if (mockUser) {
+        console.warn("Falling back to mock user data.");
+        return {
+            uid: firebaseUser.uid,
+            ...mockUser,
+        };
+    }
+
     return null;
   }, []);
 
@@ -120,15 +119,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
-    setError(null);
+    clearError();
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest, so we just return success
-      setLoading(false);
+      // onAuthStateChanged will handle the rest
       return true;
     } catch (error) {
       const authError = error as AuthError;
+      console.error("Login Error:", authError);
        if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
          setError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
        } else {
@@ -148,7 +147,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const value = { user, userDetails, loading, error, login, logout };
+  const value = { user, userDetails, loading, error, login, logout, clearError };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
