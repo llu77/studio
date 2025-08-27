@@ -1,235 +1,118 @@
+"use client";
 
-'use client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Check, X, Clock, Printer } from "lucide-react";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import React, { useState, useContext, useMemo } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { UserContext, DataContext } from "@/app/(app)/layout";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Sidebar,
+  SidebarHeader,
+  SidebarContent as UiSidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarSeparator
+} from "@/components/ui/sidebar";
+import { Logo } from "@/components/logo";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  TrendingDown,
+  Award,
+  FileText,
+  ShoppingBasket,
+  Users,
+  BarChart3,
+  Settings,
+  LogOut,
+  WalletCards,
+  BrainCircuit,
+  ClipboardList, // NEW ICON
+  Briefcase, // NEW ICON
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import pdfService from '@/services/pdf.service';
-import type { EmployeeRequest, RequestStatus } from '../employees/page';
+import { useRouter } from "next/navigation";
 
-const statusMap: { [key in RequestStatus]: { text: string; variant: "secondary" | "default" | "destructive"; icon: React.ElementType } } = {
-    pending: { text: "قيد المراجعة", variant: "secondary", icon: Clock },
-    approved: { text: "تمت الموافقة", variant: "default", icon: Check },
-    rejected: { text: "تم الرفض", variant: "destructive", icon: X },
-};
+const menuItems = [
+  { href: "/", label: "لوحة التحكم", icon: LayoutDashboard, roles: ['مدير النظام', 'مشرف فرع', 'موظف', 'شريك'] },
+  { href: "/revenue", label: "الإيرادات", icon: TrendingUp, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
+  { href: "/expenses", label: "المصاريف", icon: TrendingDown, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
+  { href: "/bonuses", label: "البونص", icon: Award, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/requests/employees", label: "طلبات الموظفين", icon: Briefcase, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
+  { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/users", label: "إدارة المستخدمين", icon: Users, roles: ['مدير النظام'] },
+  { href: "/salaries", label: "الرواتب", icon: WalletCards, roles: ['مدير النظام', 'مشرف فرع'] },
+  { href: "/reports", label: "التقارير", icon: BarChart3, roles: ['مدير النظام', 'شريك'] },
+  { href: "/accounting-intelligence", label: "الذكاء المحاسبي", icon: BrainCircuit, roles: ['مدير النظام', 'شريك'] },
+  { href: "/settings", label: "الإعدادات", icon: Settings, roles: ['مدير النظام'] },
+];
 
-const getRequestTypeName = (type: string) => {
-    const types: { [key: string]: string } = {
-      'resignation': 'طلب استقالة',
-      'leave': 'طلب إجازة',
-      'advance': 'طلب سلفة',
-      'other': 'طلب آخر',
-      'سلفة': 'طلب سلفة',
-      'إجازة': 'طلب إجازة',
-    };
-    return types[type] || type;
-};
+export function AppSidebarContent() {
+  const pathname = usePathname();
+  const { user, userDetails, logout } = useAuth(); // Use userDetails
+  const router = useRouter();
 
-// THIS PAGE IS FOR ADMINS/SUPERVISORS TO MANAGE REQUESTS
-export default function RequestsManagementPage() {
-    const { toast } = useToast();
-    const { users } = useContext(UserContext);
-    const { requests, updateRequestStatus } = useContext(DataContext);
-    const { user: authUser, userDetails } = useAuth();
-    const [filter, setFilter] = useState('all');
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
-    const visibleRequests = useMemo(() => {
-        if (!userDetails) return [];
+  const userRole = userDetails?.role;
 
-        let reqs = requests;
-        // Admins and partners see all requests.
-        if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-            reqs = requests;
-        } else if (userDetails.role === 'مشرف فرع') {
-            reqs = requests.filter(r => r.employeeBranch === userDetails.branch);
-        } else {
-           return []; // Employees should not see this page
-        }
-        
-        if (filter !== 'all') {
-            return reqs.filter(r => r.status === filter);
-        }
-
-        return reqs;
-    }, [requests, userDetails, filter]);
-    
-    const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
-        const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || (newStatus === 'approved' ? 'تمت الموافقة' : 'تم الرفض');
-        updateRequestStatus(requestId, newStatus, notes);
-        toast({
-            title: `تم تحديث حالة الطلب بنجاح`,
-            description: `تم ${newStatus === 'approved' ? 'الموافقة على' : 'رفض'} الطلب رقم ${requestId}.`
-        });
-    };
-
-    const handlePrintRequest = async (request: EmployeeRequest) => {
-        const content = request.type === 'resignation' 
-            ? request.details 
-            : `
-              نوع الطلب: ${getRequestTypeName(request.type)}
-              الموظف: ${request.employee}
-              الفرع: ${request.employeeBranch}
-              التاريخ: ${request.date}
-              التفاصيل: ${request.details}
-              الحالة: ${statusMap[request.status].text}
-              ملاحظات: ${request.notes || 'لا يوجد'}
-            `;
-            
-        const employee = users.find(u => u.id === request.employeeId);
-        const supervisor = users.find(u => u.branch === employee?.branch && u.role === 'مشرف فرع');
-
-        await pdfService.generatePDF({
-            title: `طلب ${getRequestTypeName(request.type)}`,
-            type: 'request',
-            content: { text: content },
-            userData: employee,
-            branchData: {
-                name: employee?.branch,
-                supervisorName: supervisor?.name
-            }
-        });
-        pdfService.print();
-    };
-
-    const handlePrintAllRequests = async () => {
-        if (visibleRequests.length === 0) {
-            toast({ variant: 'destructive', title: 'لا توجد طلبات للطباعة' });
-            return;
-        }
-
-        const tableData = visibleRequests.map(req => [
-            getRequestTypeName(req.type),
-            req.employee,
-            req.employeeBranch,
-            new Date(req.date).toLocaleDateString('ar-SA'),
-            statusMap[req.status].text
-        ]);
-
-        const supervisor = users.find(u => u.branch === userDetails?.branch && u.role === 'مشرف فرع');
-        
-        await pdfService.generatePDF({
-            title: 'تقرير الطلبات',
-            type: 'report',
-            content: {
-                table: {
-                    headers: [['نوع الطلب', 'الموظف', 'الفرع', 'التاريخ', 'الحالة']],
-                    data: tableData
-                }
-            },
-            userData: userDetails,
-            branchData: {
-                name: userDetails?.branch,
-                supervisorName: supervisor?.name || 'الإدارة'
-            }
-        });
-        await pdfService.print();
-    };
-
-
-    if (!userDetails || userDetails.role === 'موظف') {
-         return (
-             <Card>
-                <CardHeader>
-                    <CardTitle>غير مصرح بالوصول</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">هذه الصفحة مخصصة للمدراء والمشرفين فقط.</p>
-                </CardContent>
-            </Card>
-        );
+  const accessibleMenuItems = menuItems.filter(item => {
+    if (!userRole) return false;
+    // Special case for requests to show a single unified link
+    if (item.href === '/requests/employees') {
+        return item.roles.includes(userRole);
     }
+    // Hide the old management link
+    if (item.href === '/requests/management') {
+        return false;
+    }
+    return item.roles.includes(userRole);
+  });
+  
+  // Remove duplicates that might arise from the logic above
+  const uniqueMenuItems = accessibleMenuItems.filter((item, index, self) =>
+    index === self.findIndex((t) => (
+      t.href === item.href
+    ))
+  );
+
 
   return (
-    <Card>
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-                <CardTitle>إدارة طلبات الموظفين</CardTitle>
-                <CardDescription>
-                    مراجعة طلبات الموظفين والموافقة عليها أو رفضها.
-                </CardDescription>
+    <Sidebar side="right" variant="sidebar" collapsible="icon">
+      <div className="flex h-full flex-col">
+        <SidebarHeader className="p-4">
+            <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+                <Logo className="group-data-[collapsible=icon]:hidden" />
+            </Link>
+        </SidebarHeader>
+        <UiSidebarContent>
+          <SidebarMenu>
+            {uniqueMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/')}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
+                      <item.icon className="ml-2" />
+                      <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </UiSidebarContent>
+        <SidebarFooter className="p-4">
+            <SidebarSeparator />
+             <div className="mt-2 text-center text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                <p>&copy; 2024 BranchFlow</p>
+                <p>كل الحقوق محفوظة</p>
             </div>
-            <div className="flex items-center gap-2">
-                <div className="filters flex gap-2 overflow-x-auto pb-2">
-                    <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
-                    <Button size="sm" variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter('pending')}>قيد المراجعة</Button>
-                    <Button size="sm" variant={filter === 'approved' ? 'default' : 'outline'} onClick={() => setFilter('approved')}>الموافق عليها</Button>
-                    <Button size="sm" variant={filter === 'rejected' ? 'default' : 'outline'} onClick={() => setFilter('rejected')}>المرفوضة</Button>
-                </div>
-                <Button size="sm" variant="outline" onClick={handlePrintAllRequests}>
-                    <Printer className="ml-2 h-4 w-4" />
-                    طباعة
-                </Button>
-            </div>
-        </CardHeader>
-        <CardContent>
-            <div className="space-y-4">
-            {visibleRequests.map((req) => {
-                const statusInfo = statusMap[req.status];
-                const StatusIcon = statusInfo.icon;
-                return (
-                    <div key={req.id} className="request-card border rounded-lg p-4">
-                         <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 className="text-lg font-semibold">{getRequestTypeName(req.type)}</h3>
-                                <p className="text-sm text-muted-foreground">لـ: {req.employee} ({req.employeeBranch})</p>
-                                <p className="text-xs text-muted-foreground">بتاريخ: {new Date(req.date).toLocaleDateString('ar-SA')}</p>
-                            </div>
-                            <Badge variant={statusInfo.variant} className="gap-1">
-                                <StatusIcon className="h-3 w-3" />
-                                {statusInfo.text}
-                            </Badge>
-                        </div>
-
-                        <p className="mb-3 text-sm">{req.details}</p>
-                        
-                        {req.notes && <p className="mb-3 p-2 bg-muted rounded-md text-sm"><span className="font-semibold">ملاحظات:</span> {req.notes}</p>}
-
-
-                        <div className="flex justify-between items-end">
-                            <Button variant="outline" size="sm" onClick={() => handlePrintRequest(req)}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                طباعة الطلب
-                            </Button>
-                            {req.status === 'pending' && (
-                                <div className="flex gap-1 justify-end">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleStatusUpdate(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent><p>موافقة</p></TooltipContent>
-                                        </Tooltip>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleStatusUpdate(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent><p>رفض</p></TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </div>
-                            )}
-                        </div>
-                        {req.status === 'pending' && (
-                            <div className="admin-actions mt-4 p-3 bg-muted/50 rounded">
-                                <Label htmlFor={`notes-${req.id}`} className="mb-2 block text-xs font-medium">ملاحظات على القرار (اختياري)</Label>
-                                <Textarea id={`notes-${req.id}`} placeholder="أضف ملاحظات على القرار..." rows={2}/>
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-            </div>
-             {visibleRequests.length === 0 && (
-                <p className="py-10 text-center text-muted-foreground">لا توجد طلبات لعرضها تطابق الفلتر الحالي.</p>
-            )}
-        </CardContent>
-    </Card>
+        </SidebarFooter>
+      </div>
+    </Sidebar>
   );
 }

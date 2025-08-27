@@ -38,8 +38,7 @@ const menuItems = [
   { href: "/revenue", label: "الإيرادات", icon: TrendingUp, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
   { href: "/expenses", label: "المصاريف", icon: TrendingDown, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
   { href: "/bonuses", label: "البونص", icon: Award, roles: ['مدير النظام', 'مشرف فرع'] },
-  { href: "/requests/management", label: "طلبات الموظفين", icon: Briefcase, roles: ['مدير النظام', 'مشرف فرع'] },
-  { href: "/requests/employees", label: "طلبات الموظفين", icon: FileText, roles: ['موظف'] },
+  { href: "/requests/employees", label: "طلبات الموظفين", icon: Briefcase, roles: ['مدير النظام', 'مشرف فرع', 'موظف'] },
   { href: "/requests/products", label: "طلبات المنتجات", icon: ShoppingBasket, roles: ['مدير النظام', 'مشرف فرع'] },
   { href: "/users", label: "إدارة المستخدمين", icon: Users, roles: ['مدير النظام'] },
   { href: "/salaries", label: "الرواتب", icon: WalletCards, roles: ['مدير النظام', 'مشرف فرع'] },
@@ -60,7 +59,25 @@ export function AppSidebarContent() {
 
   const userRole = userDetails?.role;
 
-  const accessibleMenuItems = menuItems.filter(item => userRole && item.roles.includes(userRole));
+  const accessibleMenuItems = menuItems.filter(item => {
+    if (!userRole) return false;
+    // Special case for requests to show a single unified link
+    if (item.href === '/requests/employees') {
+        return item.roles.includes(userRole);
+    }
+    // Hide the old management link
+    if (item.href === '/requests/management') {
+        return false;
+    }
+    return item.roles.includes(userRole);
+  });
+  
+  // Remove duplicates that might arise from the logic above
+  const uniqueMenuItems = accessibleMenuItems.filter((item, index, self) =>
+    index === self.findIndex((t) => (
+      t.href === item.href
+    ))
+  );
 
 
   return (
@@ -73,11 +90,11 @@ export function AppSidebarContent() {
         </SidebarHeader>
         <UiSidebarContent>
           <SidebarMenu>
-            {accessibleMenuItems.map((item) => (
+            {uniqueMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/')}
                   tooltip={item.label}
                 >
                   <Link href={item.href}>
