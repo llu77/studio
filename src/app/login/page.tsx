@@ -20,16 +20,9 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
-  const [error, setError] = useState<string | null>(null);
   
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
-
-  useEffect(() => {
-      if (authError) {
-          setError(authError);
-      }
-  }, [authError]);
 
   useEffect(() => {
     const lockTime = localStorage.getItem('lockTime');
@@ -57,10 +50,13 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    setError(null);
     
     if (locked) {
-        setError('الحساب مقفل مؤقتاً. حاول بعد 30 دقيقة.');
+        toast({
+            variant: "destructive",
+            title: "الحساب مقفل",
+            description: "تم تجاوز عدد المحاولات. حاول بعد 30 دقيقة.",
+        });
         return;
     }
 
@@ -82,14 +78,22 @@ export default function LoginPage() {
         if (newAttempts >= 5) {
             setLocked(true);
             localStorage.setItem('lockTime', Date.now().toString());
-            setError('تم تجاوز عدد المحاولات المسموح. الحساب مقفل لمدة 30 دقيقة.');
+            toast({
+                variant: "destructive",
+                title: "الحساب مقفل",
+                description: "تم تجاوز عدد المحاولات المسموح. الحساب مقفل لمدة 30 دقيقة.",
+            });
             setTimeout(() => {
               setLocked(false);
               setAttempts(0);
               localStorage.removeItem('lockTime');
             }, 30 * 60 * 1000);
         } else {
-            setError(`${err.message} (المحاولات المتبقية: ${5 - newAttempts})`);
+             toast({
+                variant: "destructive",
+                title: "خطأ في تسجيل الدخول",
+                description: `بيانات غير صحيحة. (المحاولات المتبقية: ${5 - newAttempts})`,
+            });
         }
     }
   };
@@ -108,11 +112,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
+            {authError && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>خطأ في تسجيل الدخول</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>{authError}</AlertDescription>
                 </Alert>
             )}
             <div className="space-y-2">

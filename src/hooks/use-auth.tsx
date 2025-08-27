@@ -22,13 +22,14 @@ interface UserData {
   isActive?: boolean;
 }
 
-
 interface AuthContextType {
   user: User | null;
   userDetails: UserData | null; 
   loading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -53,19 +55,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (userDoc.exists()) {
               setUserDetails({ id: userDoc.id, ...userDoc.data() } as UserData);
             } else {
-                console.warn("User document not found for UID:", user.uid, "Might be a new user.");
                 const appUser = initialUsers.find(u => u.email === user.email);
                 if (appUser) {
                     const newUserData = { ...appUser, uid: user.uid, createdAt: serverTimestamp(), lastLogin: serverTimestamp(), isActive: true };
                     await setDoc(userDocRef, newUserData);
                     setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
                 } else {
-                    setUserDetails(null); 
+                    setUserDetails(null);
                 }
             }
         } catch (error) {
             console.error("Error fetching/creating user document:", error);
+            setError("Error fetching user data.");
             await signOut(auth);
+            setUser(null);
             setUserDetails(null);
         }
       } else {
@@ -78,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
+    setError(null);
     try {
         await setPersistence(auth, browserSessionPersistence);
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -93,13 +97,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
                     // The onAuthStateChanged listener will handle setting the userDoc.
                     return newUserCredential.user;
-                } catch (createError) {
+                } catch (createError: any) {
                     console.error("User Creation Error:", createError);
+                    setError(createError.message);
                     throw createError;
                 }
             }
         }
         console.error("Login Error:", error);
+        setError((error as Error).message);
         throw error;
     }
   };
@@ -109,10 +115,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await signOut(auth);
     } catch (error) {
         console.error("Logout Error:", error);
+        setError((error as Error).message);
     }
   };
 
-  const value = { user, userDetails, loading, login, logout };
+  const clearError = () => {
+    setError(null);
+  };
+
+  const value = { user, userDetails, loading, error, login, logout, clearError };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
