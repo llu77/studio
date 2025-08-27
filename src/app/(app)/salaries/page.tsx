@@ -13,7 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Check, X, ThumbsUp, ThumbsDown, Printer } from 'lucide-react'
-import { UserContext, User } from '../layout' // NEW FEATURE: Import UserContext
+import { UserContext, User } from '../layout' 
+import pdfService from '@/services/pdf.service';
+import { useAuth } from '@/hooks/use-auth';
 
 type SalaryStatus = 'pending' | 'approved' | 'paid' | 'rejected';
 
@@ -32,7 +34,6 @@ interface SalaryRecord {
   createdAt: string
 }
 
-// NEW FEATURE: Removed mockEmployees. Will use UserContext.
 const mockSalaries: SalaryRecord[] = [
     { id: 1, date: '2024-07-31', employeeId: 'USR002', employeeName: 'محمود عماره', branch: 'فرع لبن', basicSalary: 4500, deductions: 200, bonuses: 300, netSalary: 4600, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
     { id: 2, date: '2024-07-31', employeeId: 'USR005', employeeName: 'محمد إسماعيل', branch: 'فرع طويق', basicSalary: 6000, deductions: 500, bonuses: 750, netSalary: 6250, status: 'paid', createdBy: 'المدير العام', createdAt: '2024-07-28' },
@@ -88,9 +89,24 @@ const PrintableSalaryReport = ({ records, title }: { records: SalaryRecord[], ti
 
 export default function Salaries() {
   const [salaries, setSalaries] = useState<SalaryRecord[]>(mockSalaries)
-  // NEW FEATURE: Get users from context
   const { users } = useContext(UserContext); 
-  const employees = useMemo(() => users.filter(u => u.role === 'موظف' || u.role === 'مشرف فرع'), [users]);
+  const { user: authUser } = useAuth();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  const employees = useMemo(() => {
+    // NEW: Filter employees based on supervisor's branch or show all for admin
+    if (currentUser?.role === 'مشرف فرع') {
+        return users.filter(u => (u.role === 'موظف' || u.role === 'مشرف فرع') && u.branch === currentUser.branch);
+    }
+    return users.filter(u => u.role === 'موظف' || u.role === 'مشرف فرع');
+  }, [users, currentUser]);
+
+  useEffect(() => {
+    if (authUser) {
+        const u = users.find(u => u.email === authUser.email);
+        setCurrentUser(u || null);
+    }
+}, [authUser, users]);
   
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const { toast } = useToast();
@@ -153,18 +169,19 @@ export default function Salaries() {
     }
     
     setSubmitting(true)
+    const employeeDetails = employees.find(e => e.id === formData.employeeId);
     const newSalary: SalaryRecord = {
         id: salaries.length + 1,
         date: formData.date,
         employeeId: formData.employeeId,
-        employeeName: employees.find(e => e.id === formData.employeeId)?.name || 'غير معروف',
-        branch: employees.find(e => e.id === formData.employeeId)?.branch || 'غير معروف',
+        employeeName: employeeDetails?.name || 'غير معروف',
+        branch: employeeDetails?.branch || 'غير معروف',
         basicSalary: parseFloat(formData.basicSalary),
         deductions: parseFloat(formData.deductions) || 0,
         bonuses: parseFloat(formData.bonuses) || 0,
         netSalary: calculateNetSalary(),
         status: 'pending',
-        createdBy: 'المدير الحالي', // Should be dynamic in a real app
+        createdBy: currentUser?.name || 'غير معروف', 
         createdAt: new Date().toISOString()
     };
     setSalaries(prev => [newSalary, ...prev]);
@@ -195,11 +212,30 @@ export default function Salaries() {
     });
   };
 
-  const handlePrintSalary = (salary: SalaryRecord) => {
-     setPrintableReportData({ records: [salary], title: `كشف راتب الموظف: ${salary.employeeName}` });
+  const handlePrintSalary = async (salary: SalaryRecord) => {
+    const employee = users.find(u => u.id === salary.employeeId);
+    const supervisor = users.find(u => u.branch === employee?.branch && u.role === 'مشرف فرع');
+
+     await pdfService.generatePDF({
+        title: `كشف راتب الموظف: ${salary.employeeName}`,
+        type: 'salary',
+        content: {
+          employees: [{
+            name: salary.employeeName,
+            idNumber: employee?.id || 'N/A',
+            baseSalary: formatCurrency(salary.basicSalary),
+            allowances: formatCurrency(salary.bonuses), // Simplified
+            deductions: formatCurrency(salary.deductions),
+            netSalary: formatCurrency(salary.netSalary)
+          }]
+        },
+        userData: employee,
+        branchData: { name: employee?.branch, supervisorName: supervisor?.name }
+     });
+     pdfService.print();
   }
 
-  const handleBulkPrint = () => {
+  const handleBulkPrint = async () => {
      const recordsToPrint = selectedRows.length > 0 
         ? salaries.filter(s => selectedRows.includes(s.id))
         : salaries;
@@ -211,7 +247,14 @@ export default function Salaries() {
       });
       return;
     }
-     setPrintableReportData({ records: recordsToPrint, title: 'تقرير مسير الرواتب الشامل' });
+    await pdfService.generatePDF({
+        title: `تقرير مسير الرواتب`,
+        type: 'salary',
+        content: { employees: recordsToPrint },
+        userData: currentUser,
+        branchData: { name: "جميع الفروع", supervisorName: "الإدارة" }
+    });
+    pdfService.print();
   }
 
   const getStatusColor = (status: SalaryStatus) => {
@@ -223,15 +266,23 @@ export default function Salaries() {
       default: return 'bg-gray-500/20 text-gray-500'
     }
   }
+  
+  const visibleSalaries = useMemo(() => {
+      if (currentUser?.role === 'مشرف فرع') {
+          return salaries.filter(s => s.branch === currentUser.branch);
+      }
+      return salaries;
+  }, [salaries, currentUser]);
 
-  const totalSalaries = salaries.reduce((sum, salary) => sum + salary.netSalary, 0)
-  const totalBasic = salaries.reduce((sum, salary) => sum + salary.basicSalary, 0)
-  const totalDeductions = salaries.reduce((sum, salary) => sum + salary.deductions, 0)
-  const totalBonuses = salaries.reduce((sum, salary) => sum + salary.bonuses, 0)
 
-  const pendingSalaries = useMemo(() => salaries.filter(s => s.status === 'pending'), [salaries]);
+  const totalSalaries = visibleSalaries.reduce((sum, salary) => sum + salary.netSalary, 0)
+  const totalBasic = visibleSalaries.reduce((sum, salary) => sum + salary.basicSalary, 0)
+  const totalDeductions = visibleSalaries.reduce((sum, salary) => sum + salary.deductions, 0)
+  const totalBonuses = visibleSalaries.reduce((sum, salary) => sum + salary.bonuses, 0)
 
-  if (loading) {
+  const pendingSalaries = useMemo(() => visibleSalaries.filter(s => s.status === 'pending'), [visibleSalaries]);
+
+  if (loading || !currentUser) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-white text-xl">جاري التحميل...</div>
@@ -250,6 +301,7 @@ export default function Salaries() {
               <h1 className="text-3xl font-bold mb-2">الرواتب</h1>
               <p className="text-gray-400">إدارة مسيرات الرواتب والمستحقات ودورات الموافقة.</p>
             </div>
+            {(currentUser.role === 'مدير النظام') && (
             <Button
               onClick={handleBulkPrint}
               className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
@@ -257,6 +309,7 @@ export default function Salaries() {
               <Printer className="ml-2 h-4 w-4" />
               طباعة التقرير الشامل
             </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -295,100 +348,102 @@ export default function Salaries() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">إضافة مسيرة راتب جديدة</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label>الموظف</Label>
-                    <Select name="employeeId" value={formData.employeeId} onValueChange={(value) => handleInputChange({ target: { name: 'employeeId', value } } as any)} required>
-                        <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                            <SelectValue placeholder="اختر الموظف" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-700 text-white">
-                            {employees.map((employee) => (
-                                <SelectItem key={employee.id} value={employee.id}>
-                                {employee.name} - {employee.role}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>التاريخ</Label>
-                    <Input
-                      type="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleInputChange}
-                      className="bg-gray-700 border-gray-600"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>الراتب الأساسي</Label>
-                    <Input
-                      type="number"
-                      name="basicSalary"
-                      value={formData.basicSalary}
-                      onChange={handleInputChange}
-                      className="bg-gray-700 border-gray-600"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div className='flex gap-4'>
+            {(currentUser.role === 'مدير النظام' || currentUser.role === 'مشرف فرع') && (
+              <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">إضافة مسيرة راتب جديدة</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <Label>الخصومات</Label>
-                      <Input
-                        type="number"
-                        name="deductions"
-                        value={formData.deductions}
-                        onChange={handleInputChange}
-                        className="bg-gray-700 border-gray-600"
-                        placeholder="0.00"
-                      />
+                      <Label>الموظف</Label>
+                      <Select name="employeeId" value={formData.employeeId} onValueChange={(value) => handleInputChange({ target: { name: 'employeeId', value } } as any)} required>
+                          <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                              <SelectValue placeholder="اختر الموظف" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-700 text-white">
+                              {employees.map((employee) => (
+                                  <SelectItem key={employee.id} value={employee.id}>
+                                  {employee.name} - {employee.role}
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
-                      <Label>الحوافز</Label>
+                      <Label>التاريخ</Label>
+                      <Input
+                        type="date"
+                        name="date"
+                        value={formData.date}
+                        onChange={handleInputChange}
+                        className="bg-gray-700 border-gray-600"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>الراتب الأساسي</Label>
                       <Input
                         type="number"
-                        name="bonuses"
-                        value={formData.bonuses}
+                        name="basicSalary"
+                        value={formData.basicSalary}
                         onChange={handleInputChange}
                         className="bg-gray-700 border-gray-600"
                         placeholder="0.00"
+                        required
                       />
                     </div>
-                  </div>
 
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">الصافي:</span>
-                      <span className="text-green-400 font-bold text-lg">
-                        {formatCurrency(calculateNetSalary())}
-                      </span>
+                    <div className='flex gap-4'>
+                      <div>
+                        <Label>الخصومات</Label>
+                        <Input
+                          type="number"
+                          name="deductions"
+                          value={formData.deductions}
+                          onChange={handleInputChange}
+                          className="bg-gray-700 border-gray-600"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>الحوافز</Label>
+                        <Input
+                          type="number"
+                          name="bonuses"
+                          value={formData.bonuses}
+                          onChange={handleInputChange}
+                          className="bg-gray-700 border-gray-600"
+                          placeholder="0.00"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                  >
-                    {submitting ? 'جاري الحفظ...' : 'حفظ مسيرة الراتب'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                    <div className="bg-gray-700 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">الصافي:</span>
+                        <span className="text-green-400 font-bold text-lg">
+                          {formatCurrency(calculateNetSalary())}
+                        </span>
+                      </div>
+                    </div>
 
-            <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      {submitting ? 'جاري الحفظ...' : 'حفظ مسيرة الراتب'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className={currentUser.role === 'موظف' ? 'lg:col-span-3' : 'lg:col-span-2'}>
               <CardHeader>
                   <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                       <div>
@@ -397,8 +452,8 @@ export default function Salaries() {
                               {selectedRows.length > 0 ? `تم تحديد ${selectedRows.length} سجل.` : `يوجد ${pendingSalaries.length} سجل بانتظار الموافقة.`}
                           </CardDescription>
                       </div>
-                      {selectedRows.length > 0 && (
-                          <div className="flex gap-2">
+                      {(currentUser.role === 'مدير النظام') && selectedRows.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
                               <Button onClick={() => handleBulkStatusChange('approved')} className="bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" />موافقة</Button>
                               <Button onClick={() => handleBulkStatusChange('rejected')} variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" />رفض</Button>
                               <Button onClick={() => handleBulkStatusChange('paid')} className="bg-blue-600 hover:bg-blue-700"><Check className="mr-2 h-4 w-4" />دفع</Button>
@@ -411,18 +466,20 @@ export default function Salaries() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-gray-700">
+                        {currentUser.role === 'مدير النظام' && (
                         <TableHead className="w-10 text-center">
                               <Checkbox
-                                  checked={selectedRows.length === salaries.length && salaries.length > 0}
+                                  checked={selectedRows.length === visibleSalaries.length && visibleSalaries.length > 0}
                                   onCheckedChange={(checked) => {
                                       if (checked) {
-                                          setSelectedRows(salaries.map(s => s.id));
+                                          setSelectedRows(visibleSalaries.map(s => s.id));
                                       } else {
                                           setSelectedRows([]);
                                       }
                                   }}
                               />
                         </TableHead>
+                        )}
                         <TableHead className="text-gray-400">التاريخ</TableHead>
                         <TableHead className="text-gray-400">الموظف</TableHead>
                         <TableHead className="text-gray-400">الصافي</TableHead>
@@ -431,8 +488,9 @@ export default function Salaries() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salaries.map((salary) => (
+                      {visibleSalaries.map((salary) => (
                         <TableRow key={salary.id} className="border-gray-700" data-state={selectedRows.includes(salary.id) ? 'selected' : ''}>
+                         {currentUser.role === 'مدير النظام' && (
                           <TableCell className="text-center">
                               <Checkbox
                                   checked={selectedRows.includes(salary.id)}
@@ -445,6 +503,7 @@ export default function Salaries() {
                                   }}
                               />
                           </TableCell>
+                          )}
                           <TableCell>{formatDate(salary.date)}</TableCell>
                           <TableCell>{salary.employeeName}</TableCell>
                           <TableCell className="text-green-400 font-medium">
@@ -477,5 +536,3 @@ export default function Salaries() {
     </>
   )
 }
-
-    

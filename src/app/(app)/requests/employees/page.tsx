@@ -1,4 +1,3 @@
-// NEW FEATURE: Integration of ResignationForm & Advanced Request Management System
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +18,10 @@ import pdfService from '@/services/pdf.service';
 
 
 const initialRequests = [
-    { id: 'REQ001', date: '2024-07-21', employee: 'محمود عماره', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
-    { id: 'REQ002', date: '2024-07-20', employee: 'علاء ناصر', employeeId: 'USR003', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
-    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR001', employeeBranch: 'فرع لبن', type: 'سلفة', details: '300 ريال', status: 'rejected' },
-    { id: 'REQ004', date: '2024-07-18', employee: 'فارس', employeeId: 'USR007', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
+    { id: 'REQ001', date: '2024-07-21', employee: 'محمود عماره', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' as const, notes: 'موافقة للمساعدة' },
+    { id: 'REQ002', date: '2024-07-20', employee: 'علاء ناصر', employeeId: 'USR003', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' as const },
+    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR001', employeeBranch: 'فرع لبن', type: 'سلفة', details: '300 ريال', status: 'rejected' as const, notes: 'تم تجاوز الحد المسموح' },
+    { id: 'REQ004', date: '2024-07-18', employee: 'فارس', employeeId: 'USR007', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' as const },
 ];
 
 type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -52,42 +51,11 @@ const getRequestTypeName = (type: string) => {
       'leave': 'طلب إجازة',
       'advance': 'طلب سلفة',
       'other': 'طلب آخر',
+      'سلفة': 'طلب سلفة',
+      'إجازة': 'طلب إجازة',
     };
     return types[type] || type;
   };
-
-const PrintableRequests = ({ requests, branch }: { requests: EmployeeRequest[], branch: string }) => (
-    <div className="p-8">
-        <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">تقرير طلبات الموظفين</h1>
-            <p className="text-muted-foreground">الفرع: {branch === 'laban' ? 'لبن' : 'طويق'}</p>
-            <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
-        </div>
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>الموظف</TableHead>
-                    <TableHead>نوع الطلب</TableHead>
-                    <TableHead>التفاصيل</TableHead>
-                    <TableHead>الحالة</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {requests.map((req) => (
-                    <TableRow key={req.id}>
-                        <TableCell>{req.date}</TableCell>
-                        <TableCell>{req.employee} <span className="text-muted-foreground text-xs">({req.employeeBranch})</span></TableCell>
-                        <TableCell><Badge variant="outline">{getRequestTypeName(req.type)}</Badge></TableCell>
-                        <TableCell>{req.details}</TableCell>
-                        <TableCell>{statusMap[req.status].text}</TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    </div>
-);
-
 
 export default function EmployeeRequestsPage() {
     const { toast } = useToast();
@@ -101,11 +69,14 @@ export default function EmployeeRequestsPage() {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
     const [requestType, setRequestType] = useState('');
     const [requestDetails, setRequestDetails] = useState('');
+    const [activeTab, setActiveTab] = useState('view-requests');
 
     useEffect(() => {
         if (authUser) {
             const u = users.find(u => u.email === authUser.email);
             setCurrentUser(u || null);
+            // Default tab based on role
+            setActiveTab(u?.role === 'موظف' ? 'add-request' : 'view-requests');
         }
     }, [authUser, users]);
 
@@ -114,6 +85,7 @@ export default function EmployeeRequestsPage() {
 
         let reqs = requests;
 
+        // NEW FEATURE: Role-based filtering logic
         if (currentUser.role === 'مشرف فرع') {
             reqs = requests.filter(r => r.employeeBranch === currentUser.branch);
         } else if (currentUser.role === 'موظف') {
@@ -137,6 +109,7 @@ export default function EmployeeRequestsPage() {
             employee: employeeDetails.name,
             employeeId: employeeDetails.id,
             employeeBranch: employeeDetails.branch,
+            status: 'pending', // All new requests are pending
             ...newRequestData
         };
 
@@ -147,16 +120,17 @@ export default function EmployeeRequestsPage() {
             className: "bg-primary text-primary-foreground",
         });
         setRequestType(''); // Reset form
+        setActiveTab('view-requests'); // Switch to view requests after submitting
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // This is now only for non-resignation requests
         let employeeDetails;
+        // Admin/Supervisor submitting on behalf of an employee
         if(currentUser?.role !== 'موظف' && selectedEmployeeId){
              employeeDetails = users.find(u => u.id === selectedEmployeeId);
-        } else {
+        } else { // Employee submitting for themselves
             employeeDetails = users.find(u => u.email === authUser?.email);
         }
         
@@ -178,34 +152,19 @@ export default function EmployeeRequestsPage() {
             return;
         }
 
-
-        const newRequest: EmployeeRequest = {
-            id: `REQ${String(requests.length + 1).padStart(3, '0')}`,
-            date: new Date().toISOString().split('T')[0],
-            employee: employeeDetails.name,
-            employeeId: employeeDetails.id,
-            employeeBranch: employeeDetails.branch,
+        handleFormSubmit({
             type: requestType,
             details: requestDetails,
-            status: 'pending',
-        };
-
-        setRequests([newRequest, ...requests]);
+        });
 
         // Reset form
         setSelectedEmployeeId('');
         setRequestType('');
         setRequestDetails('');
-
-        toast({
-            title: "تم إرسال الطلب بنجاح",
-            description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
-            className: "bg-primary text-primary-foreground",
-        });
     };
 
     const handleStatusUpdate = (requestId: string, newStatus: RequestStatus) => {
-        const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || '';
+        const notes = (document.getElementById(`notes-${requestId}`) as HTMLTextAreaElement)?.value || (newStatus === 'approved' ? 'تمت الموافقة' : 'تم الرفض');
         setRequests(requests.map(req => 
             req.id === requestId ? { ...req, status: newStatus, notes: notes } : req
         ));
@@ -225,6 +184,7 @@ export default function EmployeeRequestsPage() {
               التاريخ: ${request.date}
               التفاصيل: ${request.details}
               الحالة: ${statusMap[request.status].text}
+              ملاحظات: ${request.notes || 'لا يوجد'}
             `;
             
         const employee = users.find(u => u.id === request.employeeId);
@@ -243,7 +203,6 @@ export default function EmployeeRequestsPage() {
         pdfService.print();
     };
 
-    // NEW FEATURE: Print all visible requests
     const handlePrintAllRequests = async () => {
         if (visibleRequests.length === 0) {
             toast({ variant: 'destructive', title: 'لا توجد طلبات للطباعة' });
@@ -281,7 +240,7 @@ export default function EmployeeRequestsPage() {
   return (
     <>
       <div className="non-printable">
-        <Tabs defaultValue="view-requests" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
             <TabsTrigger value="add-request">
                 <CirclePlus className="ms-2" />
@@ -289,7 +248,7 @@ export default function EmployeeRequestsPage() {
             </TabsTrigger>
             <TabsTrigger value="view-requests">
                 <ListOrdered className="ms-2" />
-                متابعة الطلبات
+                {currentUser?.role === 'موظف' ? 'متابعة طلباتي' : 'متابعة الطلبات'}
             </TabsTrigger>
             </TabsList>
 
@@ -315,7 +274,6 @@ export default function EmployeeRequestsPage() {
                             </Select>
                         </div>
                         
-                        {/* NEW FEATURE: Render ResignationForm or other forms based on selection */}
                         {requestType === 'resignation' ? (
                             <ResignationForm onSubmit={handleFormSubmit} onCancel={() => setRequestType('')} />
                         ) : requestType !== '' ? (
@@ -357,10 +315,11 @@ export default function EmployeeRequestsPage() {
                 <Card>
                     <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <CardTitle>إدارة طلبات الموظفين</CardTitle>
-                            <CardDescription>مراجعة طلبات الموظفين المقدمة والموافقة عليها أو رفضها.</CardDescription>
+                            <CardTitle>{currentUser?.role === 'موظف' ? 'طلباتي' : 'إدارة طلبات الموظفين'}</CardTitle>
+                            <CardDescription>
+                                {currentUser?.role === 'موظف' ? 'تابع حالة طلباتك المقدمة.' : 'مراجعة طلبات الموظفين والموافقة عليها أو رفضها.'}
+                            </CardDescription>
                         </div>
-                         {/* NEW FEATURE: Filter buttons and Print all button */}
                         <div className="flex items-center gap-2">
                             <div className="filters flex gap-2 overflow-x-auto pb-2">
                                 <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>الكل</Button>
@@ -393,7 +352,10 @@ export default function EmployeeRequestsPage() {
                                         </Badge>
                                     </div>
 
-                                    <p className="mb-3">{req.details}</p>
+                                    <p className="mb-3 text-sm">{req.details}</p>
+                                    
+                                    {req.notes && <p className="mb-3 p-2 bg-muted rounded-md text-sm"><span className="font-semibold">ملاحظات:</span> {req.notes}</p>}
+
 
                                     <div className="flex justify-between items-end">
                                         <Button variant="outline" size="sm" onClick={() => handlePrintRequest(req)}>
@@ -421,7 +383,7 @@ export default function EmployeeRequestsPage() {
                                     </div>
                                     {(currentUser?.role === 'مدير النظام' || currentUser?.role === 'مشرف فرع') && req.status === 'pending' && (
                                         <div className="admin-actions mt-4 p-3 bg-muted/50 rounded">
-                                            <Label htmlFor={`notes-${req.id}`} className="mb-2 block">ملاحظات (اختياري)</Label>
+                                            <Label htmlFor={`notes-${req.id}`} className="mb-2 block text-xs font-medium">ملاحظات على القرار (اختياري)</Label>
                                             <Textarea id={`notes-${req.id}`} placeholder="أضف ملاحظات على القرار..." rows={2}/>
                                         </div>
                                     )}
