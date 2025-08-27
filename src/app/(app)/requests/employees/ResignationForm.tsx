@@ -7,6 +7,7 @@ import { UserContext, BranchContext } from '@/app/(app)/layout';
 import SignatureCanvas from 'react-signature-canvas';
 import pdfService from '@/services/pdf.service';
 import { useAuth } from '@/hooks/use-auth';
+import { Label } from '@/components/ui/label';
 
 interface ResignationFormProps {
   onSubmit: (data: any) => void;

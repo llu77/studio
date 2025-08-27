@@ -19,10 +19,10 @@ import pdfService from '@/services/pdf.service';
 
 
 const initialRequests = [
-    { id: 'REQ001', date: '2024-07-21', employee: 'أحمد علي', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
-    { id: 'REQ002', date: '2024-07-20', employee: 'يوسف خالد', employeeId: 'USR003', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
-    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR004', employeeBranch: 'فرع طويق', type: 'سلفة', details: '300 ريال', status: 'rejected' },
-    { id: 'REQ004', date: '2024-07-18', employee: 'فاطمة محمد', employeeId: 'USR005', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
+    { id: 'REQ001', date: '2024-07-21', employee: 'محمود عماره', employeeId: 'USR002', employeeBranch: 'فرع لبن', type: 'سلفة', details: '500 ريال', status: 'approved' },
+    { id: 'REQ002', date: '2024-07-20', employee: 'علاء ناصر', employeeId: 'USR003', employeeBranch: 'فرع لبن', type: 'إجازة', details: 'إجازة مرضية - 3 أيام', status: 'pending' },
+    { id: 'REQ003', date: '2024-07-19', employee: 'عبدالحي', employeeId: 'USR001', employeeBranch: 'فرع لبن', type: 'سلفة', details: '300 ريال', status: 'rejected' },
+    { id: 'REQ004', date: '2024-07-18', employee: 'فارس', employeeId: 'USR007', employeeBranch: 'فرع طويق', type: 'إجازة', details: 'إجازة سنوية', status: 'approved' },
 ];
 
 type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -151,7 +151,16 @@ export default function EmployeeRequestsPage() {
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedEmployeeId || !requestType || !requestDetails) {
+        
+        // This is now only for non-resignation requests
+        let employeeDetails;
+        if(currentUser?.role !== 'موظف' && selectedEmployeeId){
+             employeeDetails = users.find(u => u.id === selectedEmployeeId);
+        } else {
+            employeeDetails = users.find(u => u.email === authUser?.email);
+        }
+        
+        if (!requestType || !requestDetails) {
             toast({
                 variant: "destructive",
                 title: "خطأ",
@@ -160,7 +169,6 @@ export default function EmployeeRequestsPage() {
             return;
         }
 
-        const employeeDetails = users.find(u => u.id === selectedEmployeeId);
         if(!employeeDetails) {
              toast({
                 variant: "destructive",
@@ -320,7 +328,7 @@ export default function EmployeeRequestsPage() {
                                                 <SelectValue placeholder="اختر الموظف" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {users.filter(u => u.role !== 'مدير النظام').map(user => (
+                                                {users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك').map(user => (
                                                     <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
                                                 ))}
                                             </SelectContent>
