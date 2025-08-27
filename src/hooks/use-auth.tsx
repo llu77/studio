@@ -64,40 +64,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (userDoc.exists()) {
           console.log("User document found in Firestore.");
-          const userData = userDoc.data() as UserData;
-          setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(e => console.warn("Failed to update last login:", e));
-          return { ...userData, id: userDoc.id, uid: firebaseUser.uid };
+          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+          return userDoc.data() as UserData;
         } else {
-           console.log("User document not found, waiting for Cloud Function to create it...");
-           attempts++;
-           if(attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, delay * (attempts + 1))); // Increased delay
+           console.log("User document not found, attempting to create it...");
+           const initialUserData = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
+           if (initialUserData) {
+             const newUserDoc = {
+                uid: firebaseUser.uid,
+                name: initialUserData.name,
+                email: firebaseUser.email,
+                role: initialUserData.role,
+                branch: initialUserData.branch,
+                isActive: true,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+            };
+            await setDoc(userDocRef, newUserDoc);
+            console.log(`Successfully created Firestore document for user: ${firebaseUser.uid}`);
+            // Return a snapshot-like object after creation
+            return { ...newUserDoc, createdAt: new Timestamp(Date.now()/1000, 0), lastLogin: new Timestamp(Date.now()/1000, 0)} as UserData;
+           } else {
+             throw new Error(`No initial user data found for email: ${firebaseUser.email}`);
+           }
         }
       } catch (e: any) {
         attempts++;
         console.error(`Error in fetchUserDetails (Attempt ${attempts}):`, e);
         if(attempts >= maxAttempts) {
-          break;
+          break; 
         }
         await new Promise(resolve => setTimeout(resolve, delay * attempts));
       }
     }
     
-    // --- WORKAROUND START ---
-    // If Firestore is inaccessible after all attempts, fallback to mock data.
-    console.warn("CRITICAL: Firestore is inaccessible or permissions are wrong. Falling back to mock user data.");
-    setError("فشل الاتصال بقاعدة البيانات. سيتم استخدام بيانات وهمية.");
-    const mockUser = initialUsers.find(u => u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
-    if (mockUser) {
-        console.log("Found mock user data as a fallback:", mockUser.name);
-        return {
-            uid: firebaseUser.uid,
-            ...mockUser,
-        };
-    }
-    // --- WORKAROUND END ---
-
-    console.error("Failed to fetch user details from Firestore and no mock user found.");
-    setError("Failed to fetch user details. The user document might not exist or there are persistent permission issues.");
+    console.error("Failed to fetch user details from Firestore after multiple attempts.");
+    setError("فشل الاتصال بقاعدة البيانات. الرجاء التأكد من صلاحيات الوصول.");
     return null;
   }, []);
 

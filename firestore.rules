@@ -1,28 +1,42 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can only read and update their own user document.
-    // User documents are created by a Cloud Function, not by the client.
+    
+    // Users can create their own user document, and read/update it.
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if false; // Creation is handled by a Cloud Function.
+      allow create: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Revenue, Expenses, and Requests can be read by any authenticated user.
-    // Write access should be more specific in a production environment.
-    // For now, any authenticated user can write for development purposes.
+    // Admins and Partners can read all data. Supervisors can read data from their own branch.
+    function canReadData(branch) {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let userBranch = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch;
+      return request.auth != null &&
+             (userRole == 'مدير النظام' || userRole == 'شريك' || (userRole == 'مشرف فرع' && userBranch == branch));
+    }
+
+    // Any authenticated user can write data for now. This can be tightened later.
+    function canWriteData() {
+      return request.auth != null;
+    }
+
     match /revenue/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if canReadData(resource.data.branch);
+      allow write: if canWriteData();
     }
 
     match /expenses/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if canReadData(resource.data.branch);
+      allow write: if canWriteData();
     }
-
+    
     match /requests/{docId} {
-      allow read, write: if request.auth != null;
+      // Employees can read their own requests. Supervisors/Admins can read branch requests.
+      allow read: if (request.auth != null && request.auth.uid == resource.data.employeeId) || canReadData(resource.data.employeeBranch);
+      allow write: if canWriteData();
     }
   }
 }
