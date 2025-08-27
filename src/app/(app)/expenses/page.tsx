@@ -50,7 +50,7 @@ export default function ExpensesPage() {
   }, [expenses]);
 
 
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !branch || !category || !amount || !description) {
         toast({
@@ -67,20 +67,29 @@ export default function ExpensesPage() {
         amount: parseFloat(amount),
         description,
     };
-    addExpense(newExpense);
+    
+    const result = await addExpense(newExpense);
 
-    // Reset form
-    setDate(new Date().toISOString().split('T')[0]);
-    setBranch('');
-    setCategory('');
-    setAmount('');
-    setDescription('');
+    if(result.success) {
+      // Reset form
+      setDate(new Date().toISOString().split('T')[0]);
+      setBranch('');
+      setCategory('');
+      setAmount('');
+      setDescription('');
 
-    toast({
-        title: "تم الحفظ بنجاح",
-        description: "تمت إضافة المصروف الجديد إلى السجل.",
-        className: "bg-primary text-primary-foreground",
-    });
+      toast({
+          title: "تم الحفظ بنجاح",
+          description: "تمت إضافة المصروف الجديد إلى السجل.",
+          className: "bg-primary text-primary-foreground",
+      });
+    } else {
+       toast({
+            variant: "destructive",
+            title: "فشل الحفظ",
+            description: "لم يتم حفظ المصروف بسبب خطأ في الشبكة أو الصلاحيات.",
+        });
+    }
   };
 
   const handleSearch = (term: string) => {

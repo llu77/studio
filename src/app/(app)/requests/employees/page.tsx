@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,15 +82,23 @@ export default function EmployeeRequestsPage() {
             ...newRequestData
         };
 
-        await addRequest(newRequest);
+        const result = await addRequest(newRequest);
 
-         toast({
-            title: "تم إرسال الطلب بنجاح",
-            description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
-            className: "bg-primary text-primary-foreground",
-        });
-        resetForm();
-        setActiveTab('view-my-requests'); 
+        if (result.success) {
+            toast({
+                title: "تم إرسال الطلب بنجاح",
+                description: "تمت إضافة طلبك إلى القائمة للمراجعة.",
+                className: "bg-primary text-primary-foreground",
+            });
+            resetForm();
+            setActiveTab('view-my-requests'); 
+        } else {
+            toast({
+                variant: "destructive",
+                title: "فشل الإرسال",
+                description: "لم يتم إرسال طلبك بسبب خطأ. الرجاء المحاولة مرة أخرى.",
+            });
+        }
     };
 
      const resetForm = () => {

@@ -1,8 +1,9 @@
+
 {
   "indexes": [
     {
       "collectionGroup": "revenue",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "branch", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
@@ -10,7 +11,7 @@
     },
     {
       "collectionGroup": "expenses",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "branch", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
@@ -18,9 +19,17 @@
     },
     {
       "collectionGroup": "requests",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "employeeBranch", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+     {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employeeId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
     }
