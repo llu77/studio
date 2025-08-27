@@ -96,75 +96,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const loadingCounter = useRef(3); 
-
-  const onDataLoaded = () => {
-    loadingCounter.current -= 1;
-    if (loadingCounter.current <= 0) {
-      setLoadingData(false);
-    }
-  };
-
+  
   useEffect(() => {
-    // **FIX**: Ensure user is authenticated before fetching data
+    // Only fetch data if the user is authenticated.
     if (!user) {
-        setLoadingData(true); // Keep loading if no user
+        setLoadingData(false); // Not loading if no user
+        setRevenueRecords([]);
+        setExpenses([]);
+        setRequests([]);
         return;
-    };
+    }
     
     setLoadingData(true);
-    loadingCounter.current = 3;
+    let active = true; // To prevent setting state on unmounted component
 
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
-
-    // Revenue Listener
-    const revenueQuery = query(collection(db, 'revenue'), orderBy('date', 'desc'));
-    const unsubRevenue = onSnapshot(revenueQuery, 
-      (snapshot) => {
-        const allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as RevenueRecord[];
-        setRevenueRecords(allRecords.filter(r => r.branch === branchName));
-        onDataLoaded();
-      }, 
-      (error) => {
-        console.error("Error fetching revenue: ", error);
-        onDataLoaded();
-      }
-    );
-
-    // Expenses Listener
-    const expensesQuery = query(collection(db, 'expenses'), orderBy('date', 'desc'));
-    const unsubExpenses = onSnapshot(expensesQuery,
-      (snapshot) => {
-        const allExpenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Expense[];
-        setExpenses(allExpenses.filter(e => e.branch === branchName));
-        onDataLoaded();
-      },
-      (error) => {
-        console.error("Error fetching expenses: ", error);
-        onDataLoaded();
-      }
-    );
-
-    // Requests Listener
-    const requestsQuery = query(collection(db, 'requests'), orderBy('date', 'desc'));
-    const unsubRequests = onSnapshot(requestsQuery,
-      (snapshot) => {
-        const allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EmployeeRequest[];
-        setRequests(allRequests); // Requests are filtered by role in their respective pages
-        onDataLoaded();
-      },
-      (error) => {
-        console.error("Error fetching requests: ", error);
-        onDataLoaded();
-      }
-    );
     
+    const collectionsToFetch = ['revenue', 'expenses', 'requests'];
+    const unsubscribers = collectionsToFetch.map(collectionName => {
+        const q = query(collection(db, collectionName), orderBy('date', 'desc'));
+        
+        return onSnapshot(q, (snapshot) => {
+            if (!active) return;
+            const allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            switch (collectionName) {
+                case 'revenue':
+                    setRevenueRecords(allDocs.filter((r: any) => r.branch === branchName) as RevenueRecord[]);
+                    break;
+                case 'expenses':
+                    setExpenses(allDocs.filter((e: any) => e.branch === branchName) as Expense[]);
+                    break;
+                case 'requests':
+                    setRequests(allDocs as EmployeeRequest[]);
+                    break;
+            }
+        }, (error) => {
+            console.error(`Error fetching ${collectionName}:`, error);
+        });
+    });
+
+    setLoadingData(false);
+
+    // Cleanup function
     return () => {
-      unsubRevenue();
-      unsubExpenses();
-      unsubRequests();
+      active = false;
+      unsubscribers.forEach(unsub => unsub());
     };
-  }, [user, currentBranch]);
+  }, [user, currentBranch]); // Rerun when user or branch changes
 
 
 

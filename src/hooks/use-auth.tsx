@@ -34,9 +34,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -58,15 +55,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const appUser = initialUsers.find(u => u.email === user.email);
                 if (appUser) {
                     const newUserData = { ...appUser, uid: user.uid, createdAt: serverTimestamp(), lastLogin: serverTimestamp(), isActive: true };
+                    delete (newUserData as any).id;
                     await setDoc(userDocRef, newUserData);
                     setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
                 } else {
-                    setUserDetails(null);
+                    // This case is for users that might exist in Auth but not in our initialUsers list.
+                    // We create a default user profile for them.
+                     const newDefaultUserData = {
+                        uid: user.uid,
+                        email: user.email,
+                        name: user.displayName || user.email.split('@')[0],
+                        role: 'موظف',
+                        branch: 'فرع لبن',
+                        createdAt: serverTimestamp(),
+                        lastLogin: serverTimestamp(),
+                        isActive: true
+                     } as UserData;
+                     await setDoc(userDocRef, newDefaultUserData);
+                     setUserDetails({ id: userDocRef.id, ...newDefaultUserData});
                 }
             }
         } catch (error) {
             console.error("Error fetching/creating user document:", error);
-            setError("Error fetching user data.");
+            setError("Error fetching user data. Permissions might be incorrect.");
             await signOut(auth);
             setUser(null);
             setUserDetails(null);
@@ -113,6 +124,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
         await signOut(auth);
+        setUser(null);
+        setUserDetails(null);
     } catch (error) {
         console.error("Logout Error:", error);
         setError((error as Error).message);
@@ -135,3 +148,7 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
