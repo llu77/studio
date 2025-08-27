@@ -5,12 +5,12 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebarContent } from "@/components/layout/sidebar-content";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Logo } from "@/components/logo";
 import { Header } from "@/components/layout/header";
 import { RevenueRecord } from "./revenue/page";
 import { Expense } from "./expenses/page";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, updateDoc, where, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EmployeeRequest } from "./requests/employees/page";
 
@@ -61,24 +61,24 @@ export const UserContext = React.createContext<{
 // NEW: Centralized Data Context
 export const DataContext = React.createContext<{
     revenueRecords: RevenueRecord[];
-    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => Promise<void>;
+    addRevenueRecord: (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => Promise<{success: boolean, id?: string, error?: any}>;
     deleteRevenueRecord: (id: string) => Promise<void>;
     expenses: Expense[];
-    addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
+    addExpense: (expense: Omit<Expense, 'id'>) => Promise<{success: boolean, id?: string, error?: any}>;
     deleteExpense: (id: string) => Promise<void>;
     requests: EmployeeRequest[];
-    addRequest: (request: Omit<EmployeeRequest, 'id'>) => Promise<void>;
+    addRequest: (request: Omit<EmployeeRequest, 'id'>) => Promise<{success: boolean, id?: string, error?: any}>;
     updateRequestStatus: (id: string, status: EmployeeRequest['status'], notes?: string) => Promise<void>;
     loadingData: boolean; 
 }>({
     revenueRecords: [],
-    addRevenueRecord: async () => {},
+    addRevenueRecord: async () => ({success: false, error: 'Not implemented'}),
     deleteRevenueRecord: async () => {},
     expenses: [],
-    addExpense: async () => {},
+    addExpense: async () => ({success: false, error: 'Not implemented'}),
     deleteExpense: async () => {},
     requests: [],
-    addRequest: async () => {},
+    addRequest: async () => ({success: false, error: 'Not implemented'}),
     updateRequestStatus: async () => {},
     loadingData: true,
 });
@@ -98,7 +98,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   
   useEffect(() => {
-    // **الحل الجذري:** لا تحاول جلب البيانات إلا بعد التأكد من اكتمال المصادقة وتحميل بيانات المستخدم
     if (authLoading || !userDetails) {
         setLoadingData(authLoading);
         return;
@@ -108,8 +107,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     let active = true;
 
     const branchName = currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق';
-    
-    // مصفوفة للاحتفاظ بجميع المستمعين لإلغاء الاشتراك عند الخروج
     const unsubscribers: (() => void)[] = [];
 
     const setupSubscription = (collectionName: string, queryConstraints: any[], setter: React.Dispatch<any>) => {
@@ -121,9 +118,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setter(docs);
             }, (error) => {
                 console.error(`Error fetching ${collectionName}:`, error);
-                // هنا يمكن إضافة منطق لمعالجة أخطاء الصلاحيات بشكل خاص
                 if (error.code === 'permission-denied') {
-                    // عرض رسالة للمستخدم أو إعادة التوجيه
+                    // Handle permission errors
                 }
             });
             unsubscribers.push(unsubscribe);
@@ -131,23 +127,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             console.error(`Failed to set up subscription for ${collectionName}:`, error);
         }
     };
+    
+    const baseQueryOptions = [orderBy('date', 'desc'), limit(50)];
 
-    // جلب البيانات بناءً على دور المستخدم والفرع المحدد
     if (userDetails.role === 'مدير النظام' || userDetails.role === 'شريك') {
-        setupSubscription('revenue', [where('branch', '==', branchName)], setRevenueRecords);
-        setupSubscription('expenses', [where('branch', '==', branchName)], setExpenses);
-        setupSubscription('requests', [orderBy('date', 'desc')], setRequests);
+        setupSubscription('revenue', [where('branch', '==', branchName), ...baseQueryOptions], setRevenueRecords);
+        setupSubscription('expenses', [where('branch', '==', branchName), ...baseQueryOptions], setExpenses);
+        setupSubscription('requests', [orderBy('date', 'desc'), limit(100)], setRequests);
     } else if (userDetails.role === 'مشرف فرع') {
-        setupSubscription('revenue', [where('branch', '==', userDetails.branch)], setRevenueRecords);
-        setupSubscription('expenses', [where('branch', '==', userDetails.branch)], setExpenses);
-        setupSubscription('requests', [where('employeeBranch', '==', userDetails.branch)], setRequests);
-    } else { // موظف
-        // الموظف يرى طلباته فقط، ويتم فلترتها في المكون الخاص بها
-        // لا حاجة لجلب بيانات الإيرادات والمصاريف على مستوى الـ layout للموظف العادي
+        setupSubscription('revenue', [where('branch', '==', userDetails.branch), ...baseQueryOptions], setRevenueRecords);
+        setupSubscription('expenses', [where('branch', '==', userDetails.branch), ...baseQueryOptions], setExpenses);
+        setupSubscription('requests', [where('employeeBranch', '==', userDetails.branch), orderBy('date', 'desc'), limit(100)], setRequests);
+    } else { // Employee
         setRevenueRecords([]);
         setExpenses([]);
-        // جلب الطلبات الخاصة بالموظف
-        setupSubscription('requests', [where('employeeId', '==', userDetails.uid)], setRequests);
+        setupSubscription('requests', [where('employeeId', '==', userDetails.uid), orderBy('date', 'desc'), limit(50)], setRequests);
     }
 
     setLoadingData(false);
@@ -168,43 +162,77 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
   };
 
-  const addRevenueRecord = async (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => {
+  const saveDataWithRetry = async (collectionName: string, data: any, docId?: string): Promise<{success: boolean, id?: string, error?: any}> => {
+    let attempts = 0;
+    const retryCount = 3;
+    const retryDelay = 1000;
+
+    while (attempts < retryCount) {
+        try {
+            const dataToSave = { ...data, updatedAt: serverTimestamp() };
+            if (!docId) { // New document
+                dataToSave.createdAt = serverTimestamp();
+            }
+
+            let docRef;
+            if (docId) {
+                await updateDoc(doc(db, collectionName, docId), dataToSave);
+                docRef = { id: docId };
+            } else {
+                docRef = await addDoc(collection(db, collectionName), dataToSave);
+            }
+
+            return { success: true, id: docRef.id };
+
+        } catch (error) {
+            attempts++;
+            console.error(`Attempt ${attempts} to save to ${collectionName} failed:`, error);
+            if (attempts < retryCount) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempts));
+            } else {
+                return { success: false, error };
+            }
+        }
+    }
+    return { success: false, error: 'Max retries reached' };
+};
+
+
+  const addRevenueRecord = useCallback(async (record: Omit<RevenueRecord, 'id' | 'status'>, branch: string) => {
     const isMismatched = Math.abs((record.cash + record.card) - record.totalRevenue) > 0.01;
     const distributedTotal = record.distribution.reduce((acc, dist) => acc + (dist.amount || 0), 0);
     const isDistributionUnbalanced = Math.abs(distributedTotal - record.totalRevenue) > 0.01;
 
     let status: RevenueRecord['status'] = 'Matched';
-    if (isDistributionUnbalanced) {
-      status = 'Unbalanced';
-    } else if (isMismatched) {
-      status = 'Discrepancy';
-    }
-
+    if (isDistributionUnbalanced) status = 'Unbalanced';
+    else if (isMismatched) status = 'Discrepancy';
+    
     const branchName = branch === 'laban' ? 'فرع لبن' : 'فرع طويق';
     const newRecord = { ...record, status, branch: branchName };
-    await addDoc(collection(db, 'revenue'), newRecord);
-  };
+    
+    return saveDataWithRetry('revenue', newRecord);
+  }, []);
   
-  const deleteRevenueRecord = async (id: string) => {
+  const deleteRevenueRecord = useCallback(async (id: string) => {
     await deleteDoc(doc(db, 'revenue', id));
-  };
+  }, []);
   
-  const addExpense = async (expense: Omit<Expense, 'id'>) => {
-    await addDoc(collection(db, 'expenses'), expense);
-  }
+  const addExpense = useCallback(async (expense: Omit<Expense, 'id'>) => {
+     return saveDataWithRetry('expenses', expense);
+  }, []);
 
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = useCallback(async (id: string) => {
     await deleteDoc(doc(db, 'expenses', id));
-  }
+  }, []);
 
-  const addRequest = async (request: Omit<EmployeeRequest, 'id'>) => {
-      await addDoc(collection(db, 'requests'), request);
-  };
+  const addRequest = useCallback(async (request: Omit<EmployeeRequest, 'id'>) => {
+      return saveDataWithRetry('requests', request);
+  }, []);
 
-  const updateRequestStatus = async (id: string, status: EmployeeRequest['status'], notes?: string) => {
+  const updateRequestStatus = useCallback(async (id: string, status: EmployeeRequest['status'], notes?: string) => {
       const requestDocRef = doc(db, 'requests', id);
       await updateDoc(requestDocRef, { status, notes });
-  };
+  }, []);
 
 
   useEffect(() => {
@@ -213,17 +241,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading || !userDetails) { // عرض شاشة التحميل طالما أن المصادقة أو جلب البيانات لم يكتمل
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <Logo />
-                <p className="text-muted-foreground">
-                    {authLoading ? 'جاري التحقق من الهوية...' : 'جاري تحميل بيانات المستخدم...'}
-                </p>
-            </div>
+  const renderLoadingScreen = (message: string) => (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+            <Logo />
+            <p className="text-muted-foreground">{message}</p>
         </div>
-    );
+    </div>
+  );
+
+  if (authLoading) {
+    return renderLoadingScreen('جاري التحقق من الهوية...');
+  }
+  
+  if (!userDetails) {
+      // This state can happen briefly between auth loading and details fetching
+      // or if there's an unrecoverable error in useAuth
+      return renderLoadingScreen('جاري تحميل بيانات المستخدم...');
   }
 
   return (
