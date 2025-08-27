@@ -26,9 +26,10 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    // This is the fix for the cross-origin error in the development environment.
-    allowedDevOrigins: ["https://*.cluster-oayqgyglpfgseqclbygurw4xd4.cloudworkstations.dev"],
-  }
+    // Keep any other experimental features here if needed in the future
+  },
+  // This is the fix for the cross-origin error in the development environment.
+  allowedDevOrigins: ["https://*.cluster-oayqgyglpfgseqclbygurw4xd4.cloudworkstations.dev"],
 };
 
 export default nextConfig;
