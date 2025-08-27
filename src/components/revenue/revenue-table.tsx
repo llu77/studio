@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/tooltip"
 import { BranchContext } from "@/app/(app)/layout";
 import { useToast } from "@/hooks/use-toast";
+import pdfService from '@/services/pdf.service'; // NEW FEATURE
+import { useAuth } from '@/hooks/use-auth'; // NEW FEATURE
 
 
 type RevenueDistribution = {
@@ -47,47 +49,8 @@ const statusTextMap: { [key in RevenueRecord['status']]: string } = {
     Unbalanced: 'فرق بالتوزيع'
 }
 
-
-const PrintableRevenue = ({ records, branch }: { records: RevenueRecord[], branch: string }) => (
-    <div className="p-8">
-        <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">تقرير سجل الإيرادات</h1>
-            <p className="text-muted-foreground">الفرع: {branch === 'laban' ? 'لبن' : 'طويق'}</p>
-            <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
-        </div>
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>رقم القيد</TableHead>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>الإجمالي</TableHead>
-                    <TableHead>التوزيع</TableHead>
-                    <TableHead>الحالة</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {records.map((record) => (
-                    <TableRow key={record.id}>
-                        <TableCell className="font-medium">{record.id}</TableCell>
-                        <TableCell>{record.date}</TableCell>
-                        <TableCell>{record.totalRevenue.toFixed(2)} ريال</TableCell>
-                        <TableCell>
-                            <ul className="list-disc pr-4">
-                                {record.distribution.map((d, i) => (
-                                    <li key={i}>{d.employeeName}: {d.amount.toFixed(2)} ريال</li>
-                                ))}
-                            </ul>
-                        </TableCell>
-                        <TableCell>
-                            <Badge variant={statusVariantMap[record.status]}>{statusTextMap[record.status]}</Badge>
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    </div>
-);
-
+// This component is no longer needed as we use the PDF service
+// const PrintableRevenue = ({ records, branch }: { records: RevenueRecord[], branch: string }) => ( ... );
 
 interface RevenueTableProps {
     records: RevenueRecord[];
@@ -99,7 +62,7 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filteredData, setFilteredData] = React.useState(records);
   const { currentBranch } = React.useContext(BranchContext);
-  const printRef = React.useRef(null);
+  const { user } = useAuth(); // NEW FEATURE
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -111,8 +74,39 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
     setFilteredData(results);
   }, [searchTerm, records]);
 
-  const handlePrint = () => {
-      window.print();
+  // NEW FEATURE: Unified printing using PDF Service
+  const handlePrint = async () => {
+    if (filteredData.length === 0) {
+        toast({ variant: 'destructive', title: 'لا توجد بيانات للطباعة' });
+        return;
+    }
+
+    const tableData = filteredData.map(rec => [
+        rec.id,
+        rec.date,
+        rec.totalRevenue.toFixed(2) + ' ريال',
+        rec.distribution.map(d => `${d.employeeName}: ${d.amount.toFixed(2)}`).join('\n'),
+        statusTextMap[rec.status]
+    ]);
+
+    const supervisor = { name: 'المشرف المسؤول' }; // Placeholder
+
+    await pdfService.generatePDF({
+        title: 'تقرير سجل الإيرادات',
+        type: 'report',
+        content: {
+            table: {
+                headers: [['رقم القيد', 'التاريخ', 'الإجمالي', 'التوزيع', 'الحالة']],
+                data: tableData
+            }
+        },
+        userData: user,
+        branchData: {
+            name: currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق',
+            supervisorName: supervisor.name
+        }
+    });
+    await pdfService.print();
   }
 
   const handleDelete = (id: string) => {
@@ -133,9 +127,7 @@ export function RevenueTable({ records, onDelete }: RevenueTableProps) {
 
   return (
     <>
-      <div className="printable-content hidden" ref={printRef}>
-        <PrintableRevenue records={filteredData} branch={currentBranch} />
-      </div>
+      {/* The old printable component is removed */}
       <div className="non-printable">
         <Card>
             <CardHeader>

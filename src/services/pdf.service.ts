@@ -1,8 +1,7 @@
+
 // NEW FEATURE: Unified PDF Service
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-// import { storage } from '@/lib/firebase'; // Assuming firebase is configured
 
 // This is a placeholder for the actual implementation using jsPDF.
 // The full implementation will be done in subsequent steps.
@@ -10,17 +9,18 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 class PDFService {
   private doc: jsPDF;
   private logo?: string;
-  private defaultFont: string = 'Arial';
+  private defaultFont: string = 'Arial'; // Using a default available font
   
   constructor() {
     this.doc = new jsPDF();
     // In a real app, you might load a custom font here
-    // this.setupArabicFont();
+    // this.setupArabicFont(); // This requires a base64 font file which we don't have
     this.loadCompanyLogo();
   }
 
   async setupArabicFont() {
-    // Add custom Arabic font
+    // This part is commented out because it requires a font file to be loaded,
+    // which is not available in this environment. We'll rely on default fonts.
     // this.doc.addFileToVFS('Amiri-Regular.ttf', arabicFontBase64);
     // this.doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
     // this.doc.setFont('Amiri');
@@ -28,7 +28,7 @@ class PDFService {
 
   async loadCompanyLogo() {
       // In a real app, load from a secure source or config
-    this.logo = 'https://picsum.photos/seed/logo/120/60';
+    this.logo = 'https://picsum.photos/seed/branchflow/120/40';
   }
 
   public async generatePDF(config: {
@@ -58,13 +58,13 @@ class PDFService {
     
     // Placeholder for logo
     if (this.logo) {
-        this.doc.addImage(this.logo, 'PNG', pageWidth / 2 - 30, 10, 60, 30);
+        this.doc.addImage(this.logo, 'PNG', pageWidth / 2 - 20, 10, 40, 15);
     }
 
 
-    this.doc.setFontSize(24);
+    this.doc.setFontSize(22);
     this.doc.setTextColor(30, 64, 175);
-    this.doc.text(title, pageWidth / 2, 50, { align: 'center' });
+    this.doc.text(title, pageWidth / 2, 40, { align: 'center' });
     
     this.doc.setFontSize(10);
     this.doc.setTextColor(107, 114, 128);
@@ -72,7 +72,7 @@ class PDFService {
     this.doc.text(`مكان الطباعة: ${branchName}`, pageWidth - 20, 20, { align: 'right' });
   }
 
-  private addContent(type: string, content: any, startY: number = 70) {
+  private addContent(type: string, content: any, startY: number = 60) {
     if (type === 'report' && content.table) {
         (this.doc as any).autoTable({
             head: content.table.headers,
@@ -81,13 +81,13 @@ class PDFService {
             theme: 'grid',
             styles: {
               font: this.defaultFont,
-              fontSize: 11,
-              cellPadding: 5,
+              fontSize: 10,
+              cellPadding: 3,
               halign: 'right'
             },
             headStyles: {
-              fillColor: [243, 244, 246],
-              textColor: [31, 41, 55],
+              fillColor: [229, 231, 235], // gray-200
+              textColor: [17, 24, 39], // gray-900
               fontStyle: 'bold'
             },
         });
@@ -96,7 +96,7 @@ class PDFService {
         this.doc.setTextColor(31, 41, 55);
         const textContent = typeof content === 'string' ? content : content.text;
         const lines = this.doc.splitTextToSize(textContent || '', 160);
-        this.doc.text(lines, 25, startY, { align: 'right', lang: 'ar' });
+        this.doc.text(lines, 190, startY, { align: 'right', lang: 'ar' });
     }
   }
 
@@ -118,7 +118,7 @@ class PDFService {
     this.doc.line(pageWidth - 75, footerY + 21, pageWidth - 125, footerY + 21);
     
     if (userData) {
-      this.doc.text(`الموظف: ${userData.name}`, 95, footerY, { align: 'right'});
+      this.doc.text(`الموظف: ${userData.displayName || userData.name || 'N/A'}`, 95, footerY, { align: 'right'});
       this.doc.text('توقيع الموظف:', 95, footerY + 21, { align: 'right'});
       this.doc.line(75, footerY + 21, 25, footerY + 21);
     }
@@ -153,6 +153,7 @@ class PDFService {
     return this.doc.output('blob');
   }
 
+// In a real app with Firebase Storage configured, this would be used.
 //   public async uploadToFirebase(filename: string, storageInstance: any): Promise<string> {
 //     const blob = await this.getBlob();
 //     const storageRef = ref(storageInstance, `pdfs/${filename}_${Date.now()}.pdf`);

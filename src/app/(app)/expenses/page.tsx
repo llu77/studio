@@ -13,7 +13,9 @@ import { CirclePlus, ListOrdered, FilePenLine, Trash2, Search, Printer } from "l
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { DataContext } from '../layout';
+import { DataContext, BranchContext } from '../layout';
+import pdfService from '@/services/pdf.service'; // NEW FEATURE
+import { useAuth } from '@/hooks/use-auth'; // NEW FEATURE
 
 export type Expense = {
     id: string;
@@ -24,45 +26,18 @@ export type Expense = {
     description: string;
 };
 
-const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => (
-    <div className="p-8">
-        <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">تقرير المصروفات</h1>
-            <p className="text-muted-foreground">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
-        </div>
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>الفرع</TableHead>
-                    <TableHead>البند</TableHead>
-                    <TableHead>المبلغ</TableHead>
-                    <TableHead>الوصف</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {expenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                        <TableCell>{expense.date}</TableCell>
-                        <TableCell><Badge variant="secondary">{expense.branch}</Badge></TableCell>
-                        <TableCell>{expense.category}</TableCell>
-                        <TableCell className="font-medium">{expense.amount.toFixed(2)} ريال</TableCell>
-                        <TableCell>{expense.description}</TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    </div>
-);
+// This component is no longer needed as we use the PDF service
+// const PrintableExpenses = ({ expenses }: { expenses: Expense[] }) => ( ... );
 
 
 export default function ExpensesPage() {
   const { expenses, addExpense, deleteExpense } = useContext(DataContext);
+  const { user } = useAuth(); // NEW FEATURE
+  const { currentBranch } = useContext(BranchContext); // NEW FEATURE
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>(expenses);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-  const printRef = React.useRef(null);
-
+  
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [branch, setBranch] = useState('');
@@ -137,17 +112,47 @@ export default function ExpensesPage() {
         description: `ميزة تعديل المصروف ${id} سيتم إضافتها قريباً.`,
     });
   }
+  
+  // NEW FEATURE: Unified printing using PDF Service
+  const handlePrint = async () => {
+     if (filteredExpenses.length === 0) {
+        toast({ variant: 'destructive', title: 'لا توجد بيانات للطباعة' });
+        return;
+    }
 
-  const handlePrint = () => {
-    window.print();
+    const tableData = filteredExpenses.map(exp => [
+        exp.date,
+        exp.branch,
+        exp.category,
+        exp.amount.toFixed(2) + ' ريال',
+        exp.description
+    ]);
+
+    const supervisor = { name: 'المشرف المسؤول' }; // Placeholder
+
+    await pdfService.generatePDF({
+        title: 'تقرير المصروفات',
+        type: 'report',
+        content: {
+            table: {
+                headers: [['التاريخ', 'الفرع', 'البند', 'المبلغ', 'الوصف']],
+                data: tableData
+            }
+        },
+        userData: user,
+        branchData: {
+            name: currentBranch === 'laban' ? 'فرع لبن' : 'فرع طويق',
+            supervisorName: supervisor.name
+        }
+    });
+
+    await pdfService.print();
   }
 
 
   return (
     <>
-      <div className="printable-content hidden" ref={printRef}>
-        <PrintableExpenses expenses={filteredExpenses} />
-      </div>
+      {/* The old printable component is removed */}
       <div className="non-printable">
         <Tabs defaultValue="add-expense" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3">
