@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from '@/lib/utils'
 import { Trash2, Edit, Shield, Plus, History } from 'lucide-react'
 
 interface User {
@@ -258,7 +257,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="space-y-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">إدارة المستخدمين</h1>
           <p className="text-gray-400">إدارة حسابات المستخدمين والصلاحيات</p>
@@ -493,3 +492,5 @@ export default function AdminUsers() {
     </div>
   )
 }
+
+    
