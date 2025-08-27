@@ -18,18 +18,18 @@ import type { AuthError } from 'firebase/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // NEW FEATURE: Import firestore functionalities to fetch branches and user data
 import { doc, getDoc, collection, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Assuming firebase config is in lib/firebase
+import { db } from '@/lib/firebase'; 
 
 // NEW FEATURE: Mock branches data until Firestore is connected
 const mockBranches = [
-    { id: 'branch_laban', name: 'فرع لبن - الرياض' },
-    { id: 'branch_tuwaiq', name: 'فرع طويق - الرياض' },
+    { id: 'branch_laban', name: 'فرع لبن' },
+    { id: 'branch_tuwaiq', name: 'فرع طويق' },
 ];
 
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, loading } = useAuth();
+  const { user, login, loading, userDetails } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
@@ -75,6 +75,12 @@ export default function LoginPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (user && userDetails) {
+        router.push('/');
+    }
+  }, [user, userDetails, router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -91,30 +97,27 @@ export default function LoginPage() {
     }
 
     try {
-      const loggedInUser = await login(email, password); // Modified login to return user
+      const loggedInUser = await login(email, password);
       
-      // NEW FEATURE: Post-login verification and updates
       const userDocRef = doc(db, "users", loggedInUser.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
           throw new Error("لم يتم العثور على بيانات المستخدم.");
       }
       const userData = userDoc.data();
+      
+      const userBranchId = userData.branch === 'فرع لبن' ? 'branch_laban' : userData.branch === 'فرع طويق' ? 'branch_tuwaiq' : 'all';
 
-      if (userData.branchId !== branchId && userData.role !== 'admin' && userData.branchId !== 'all') {
+      if (userBranchId !== branchId && userData.role !== 'مدير النظام' && userBranchId !== 'all') {
+          await logout();
           throw new Error('الفرع المختار غير صحيح لهذا الحساب.');
       }
-
+       
       await updateDoc(userDocRef, {
         lastLogin: serverTimestamp(),
-        loginBranch: branchId
+        loginBranch: branchId === 'branch_laban' ? 'فرع لبن' : 'فرع طويق'
       });
-
-      const idToken = await loggedInUser.getIdToken(true);
-      localStorage.setItem('authToken', idToken);
-      localStorage.setItem('userBranch', branchId);
-      localStorage.setItem('userRole', userData.role);
-
+      
       setAttempts(0); // Reset attempts on successful login
       
       toast({
@@ -122,7 +125,6 @@ export default function LoginPage() {
         description: "مرحباً بعودتك!",
       });
 
-      // Role-based redirection can be implemented here later
       router.push("/");
 
     } catch (err) {
@@ -133,8 +135,6 @@ export default function LoginPage() {
                 errorMessage = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
             } else if (authError.code === 'auth/invalid-email') {
                 errorMessage = "صيغة البريد الإلكتروني غير صحيحة.";
-            } else {
-                errorMessage = authError.message;
             }
         } else {
             errorMessage = authError.message;

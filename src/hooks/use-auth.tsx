@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import type { Auth, AuthError, UserCredential } from 'firebase/auth';
+import type { Auth, AuthError } from 'firebase/auth';
 import type { User as AppUser, Role, Branch } from '@/app/(app)/layout';
 
 interface AuthContextType {
@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
+        setLoading(true);
         // Fetch user details from Firestore
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -39,37 +40,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
             // Handle case where user exists in Auth but not Firestore
             setUserDetails(null); 
+            // Optional: logout user if their record is deleted from Firestore
+            await signOut(auth);
         }
+        setLoading(false);
       } else {
         setUserDetails(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    setLoading(true);
     try {
         await setPersistence(auth, browserSessionPersistence);
-        const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, password);
-        // User details will be fetched by the onAuthStateChanged listener
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // The onAuthStateChanged listener will handle setting user and userDetails state
         return userCredential.user;
     } catch (error) {
-        setLoading(false);
+        console.error("Login Error:", error);
         throw error;
     }
   };
 
   const logout = async () => {
-    setLoading(true);
-    await signOut(auth);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userBranch');
-    localStorage.removeItem('userRole');
-    setUser(null);
-    setUserDetails(null);
-    setLoading(false);
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Logout Error:", error);
+    } finally {
+        setUser(null);
+        setUserDetails(null);
+    }
   };
 
   const value = { user, userDetails, loading, login, logout };
