@@ -73,8 +73,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
              lastLogin: serverTimestamp(),
              isActive: true
           };
+          // This is the line that might be failing.
           await setDoc(userDocRef, newUserData);
           setUserDetails({ id: userDocRef.id, ...newUserData } as UserData);
+        } else {
+           setError("User profile not found in initial data.");
         }
       }
     } catch (e: any) {
@@ -89,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      setError(null);
       if (firebaseUser) {
         setUser(firebaseUser);
         await fetchUserDetails(firebaseUser);
@@ -102,42 +106,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [fetchUserDetails]);
 
   const login = async (email: string, password: string) => {
-    setError(null);
     setLoading(true);
+    setError(null);
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle the rest
+      // onAuthStateChanged will handle fetching user details.
     } catch (error) {
       const authError = error as AuthError;
-      if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-        const appUser = initialUsers.find(u => u.email === email);
-        if (appUser) {
-          try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            // onAuthStateChanged will handle the rest
-          } catch (createError: any) {
-            console.error("User Creation Error:", createError);
-            setError(createError.message);
-            throw createError;
-          }
-        } else {
-            setError("Invalid credentials or user not found in initial list.");
-            throw error;
-        }
-      } else {
-         console.error("Login Error:", error);
-         setError((error as Error).message);
-         throw error;
-      }
-    } finally {
-        setLoading(false);
+      console.error("Login Error:", authError);
+       if (authError.code === 'auth/user-not-found') {
+         setError("المستخدم غير موجود. الرجاء التأكد من البريد الإلكتروني.");
+       } else if (authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
+         setError("كلمة المرور غير صحيحة. الرجاء المحاولة مرة أخرى.");
+       } else {
+         setError("حدث خطأ غير متوقع أثناء تسجيل الدخول.");
+       }
+      setLoading(false);
+      throw authError;
     }
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
+      setUserDetails(null);
     } catch (e) {
       console.error("Logout Error:", e);
       setError((e as Error).message);

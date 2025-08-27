@@ -16,37 +16,37 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, userDetails, login, loading: authLoading, error: authError, clearError } = useAuth();
+  const { user, login, loading: authLoading, error: authError, clearError } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@branchflow.com');
   const [password, setPassword] = useState('123456');
 
   useEffect(() => {
-    if (user && userDetails) {
+    if (user) {
         router.push('/');
     }
-  }, [user, userDetails, router]);
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError(); // Clear previous errors
+    clearError();
 
     try {
       await login(email, password);
       
       toast({
         title: "تم تسجيل الدخول بنجاح",
-        description: "مرحباً بعودتك!",
+        description: "مرحباً بعودتك! سيتم توجيهك الآن.",
       });
 
-      // The useEffect will handle the redirection
+      // The useEffect above will handle the redirection.
     } catch (err: any) {
-      // The error state is already set in the auth context,
+      // The error is already set in the auth context,
       // so we just show a generic toast. The alert will show the specific error.
       toast({
         variant: "destructive",
         title: "خطأ في تسجيل الدخول",
-        description: "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
+        description: authError || "الرجاء التحقق من بياناتك والمحاولة مرة أخرى.",
       });
     }
   };

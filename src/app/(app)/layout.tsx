@@ -101,9 +101,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Only fetch data if the user is authenticated.
     if (!user) {
         setLoadingData(false); // Not loading if no user
-        setRevenueRecords([]);
-        setExpenses([]);
-        setRequests([]);
         return;
     }
     
