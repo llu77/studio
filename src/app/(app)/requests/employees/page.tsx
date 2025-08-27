@@ -76,9 +76,10 @@ export default function EmployeeRequestsPage() {
              if (u) {
                 const sup = users.find(usr => usr.branch === u.branch && usr.role === 'مشرف فرع');
                 setSupervisor(sup || null);
-                // If user is an employee, auto-select them for resignation
+                // If user is an employee, auto-select them for requests
                 if (u.role === 'موظف') {
                     setEmployeeForResignation(u);
+                    setSelectedEmployeeId(u.id);
                 }
             }
         }
@@ -111,6 +112,18 @@ export default function EmployeeRequestsPage() {
         return reqs;
     }, [requests, currentUser, filter]);
 
+    const employeesForSelection = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.role === 'مدير النظام' || currentUser.role === 'شريك') {
+            return users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك');
+        }
+        if (currentUser.role === 'مشرف فرع') {
+            return users.filter(u => u.branch === currentUser.branch && u.role !== 'مدير النظام' && u.role !== 'شريك');
+        }
+        return [];
+    }, [users, currentUser]);
+
+
     const handleFormSubmit = async (newRequestData: any) => {
         const employeeDetails = newRequestData.employeeId ? users.find(u => u.id === newRequestData.employeeId) : currentUser;
          if(!employeeDetails) return;
@@ -138,17 +151,20 @@ export default function EmployeeRequestsPage() {
      const resetForm = () => {
         setRequestType('');
         setRequestDetails('');
-        setSelectedEmployeeId('');
-        setEmployeeForResignation(null);
+        // Reset employee selection based on role
         if(currentUser?.role === 'موظف') {
+            setSelectedEmployeeId(currentUser.id);
             setEmployeeForResignation(currentUser);
+        } else {
+            setSelectedEmployeeId('');
+            setEmployeeForResignation(null);
         }
     };
 
     const handleSubmitRequest = (e: React.FormEvent) => {
         e.preventDefault();
         
-        let employeeId = currentUser?.role === 'موظف' ? currentUser.id : selectedEmployeeId;
+        const employeeId = currentUser?.role === 'موظف' ? currentUser.id : selectedEmployeeId;
         
         if (!requestType || !requestDetails || !employeeId) {
             toast({
@@ -257,7 +273,11 @@ export default function EmployeeRequestsPage() {
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
                     <CardTitle>تقديم طلب موظف جديد</CardTitle>
-                    <CardDescription>يمكن للمدير تقديم طلب نيابة عن الموظفين أو يمكن للموظف تقديم طلب لنفسه.</CardDescription>
+                    <CardDescription>
+                        {currentUser?.role === 'موظف' 
+                            ? 'يمكنك تقديم طلب لنفسك فقط.' 
+                            : 'يمكن للمشرف أو المدير تقديم طلب نيابة عن الموظفين.'}
+                    </CardDescription>
                     </CardHeader>
                     <CardContent>
                        <div className="space-y-2 mb-6">
@@ -285,7 +305,7 @@ export default function EmployeeRequestsPage() {
                                                 <SelectValue placeholder="اختر الموظف" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك').map(user => (
+                                                {employeesForSelection.map(user => (
                                                     <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -305,13 +325,13 @@ export default function EmployeeRequestsPage() {
                            <form onSubmit={handleSubmitRequest} className="space-y-6 border-t pt-6">
                                 {currentUser?.role !== 'موظف' && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="employee-name">اسم الموظف (إذا كنت تقدم نيابة عنه)</Label>
-                                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                                        <Label htmlFor="employee-name">اسم الموظف</Label>
+                                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId} required>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="اختر الموظف" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {users.filter(u => u.role !== 'مدير النظام' && u.role !== 'شريك').map(user => (
+                                                {employeesForSelection.map(user => (
                                                     <SelectItem key={user.id} value={user.id}>{user.name} ({user.branch})</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -325,6 +345,7 @@ export default function EmployeeRequestsPage() {
                                         placeholder="اكتب تفاصيل الطلب هنا..." 
                                         value={requestDetails}
                                         onChange={(e) => setRequestDetails(e.target.value)}
+                                        required
                                     />
                                 </div>
                                 <div className="flex justify-end pt-4">
@@ -427,5 +448,3 @@ export default function EmployeeRequestsPage() {
     </>
   );
 }
-
-    
