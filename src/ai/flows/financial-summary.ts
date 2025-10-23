@@ -24,7 +24,12 @@ const FinancialSummaryOutputSchema = z.object({
 export type FinancialSummaryOutput = z.infer<typeof FinancialSummaryOutputSchema>;
 
 export async function generateFinancialSummary(input: FinancialSummaryInput): Promise<FinancialSummaryOutput> {
-  return financialSummaryFlow(input);
+  try {
+    return await financialSummaryFlow(input);
+  } catch (error) {
+    console.error('Error generating financial summary:', error);
+    throw new Error(`Failed to generate financial summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -48,7 +53,15 @@ const financialSummaryFlow = ai.defineFlow(
     outputSchema: FinancialSummaryOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        throw new Error('AI model returned empty output');
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in financial summary flow:', error);
+      throw error;
+    }
   }
 );

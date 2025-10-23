@@ -50,9 +50,11 @@ export async function getFinancialSummary(
         data: result
     };
   } catch (error) {
+    console.error('Error generating financial summary:', error);
+    const errorMessage = error instanceof Error ? error.message : 'حدث خطأ غير معروف';
     return {
         success: false,
-        message: "حدث خطأ أثناء إنشاء الملخص. الرجاء المحاولة مرة أخرى."
+        message: `حدث خطأ أثناء إنشاء الملخص: ${errorMessage}. الرجاء المحاولة مرة أخرى.`
     };
   }
 }
