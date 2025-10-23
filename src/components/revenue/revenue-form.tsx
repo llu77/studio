@@ -97,9 +97,13 @@ export function RevenueForm({ onSave }: RevenueFormProps) {
     );
 
     const onSubmit: SubmitHandler<RevenueFormValues> = async (data) => {
-        const success = await onSave(data, currentBranch);
-        if (success) {
-            form.reset();
+        try {
+            const success = await onSave(data, currentBranch);
+            if (success) {
+                form.reset();
+            }
+        } catch (error) {
+            console.error('Error submitting revenue form:', error);
         }
     };
 

@@ -35,39 +35,49 @@ class OpenAIResponsesClient implements ResponsesAPIClient {
   }
   
   async createResponse(params: CreateResponseParams): Promise<ResponseStream | any> {
-    const response = await fetch(`${this.baseURL}/responses`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        input: params.input,
-        instructions: params.instructions,
-        previous_response_id: this.lastResponseId,
-        conversation: this.conversationId,
-        tools: params.tools || [
-          { type: 'web_search' },
-          { type: 'file_search' },
-          { type: 'code_interpreter' }
-        ],
-        store: true,
-        stream: params.stream ?? true,
-        include: [
-          'web_search_call.action.sources',
-          'code_interpreter_call.outputs',
-          'file_search_call.results'
-        ]
+    try {
+      const response = await fetch(`${this.baseURL}/responses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-2025-04-14',
+          input: params.input,
+          instructions: params.instructions,
+          previous_response_id: this.lastResponseId,
+          conversation: this.conversationId,
+          tools: params.tools || [
+            { type: 'web_search' },
+            { type: 'file_search' },
+            { type: 'code_interpreter' }
+          ],
+          store: true,
+          stream: params.stream ?? true,
+          include: [
+            'web_search_call.action.sources',
+            'code_interpreter_call.outputs',
+            'file_search_call.results'
+          ]
+        })
       })
-    })
-    
-    if (params.stream) {
-      return this.handleStreamResponse(response)
-    } else {
-      const data = await response.json()
-      this.lastResponseId = data.id
-      return data
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`)
+      }
+      
+      if (params.stream) {
+        return this.handleStreamResponse(response)
+      } else {
+        const data = await response.json()
+        this.lastResponseId = data.id
+        return data
+      }
+    } catch (error) {
+      console.error('Error creating response:', error)
+      throw error
     }
   }
   
@@ -105,67 +115,116 @@ class OpenAIResponsesClient implements ResponsesAPIClient {
   }
 
   async getResponse(responseId: string): Promise<any> {
-    // Implementation for getResponse
-    const response = await fetch(`${this.baseURL}/responses/${responseId}`, {
+    try {
+      const response = await fetch(`${this.baseURL}/responses/${responseId}`, {
         headers: {
-            'Authorization': `Bearer ${this.apiKey}`
+          'Authorization': `Bearer ${this.apiKey}`
         }
-    });
-    return response.json();
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Failed to get response: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`)
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Error getting response:', error)
+      throw error
+    }
   }
   
   async createConversation(items: any[] = []): Promise<Conversation> {
-    const response = await fetch(`${this.baseURL}/conversations`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ items })
-    })
-    
-    const conversation = await response.json()
-    this.conversationId = conversation.id
-    return conversation
+    try {
+      const response = await fetch(`${this.baseURL}/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ items })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Failed to create conversation: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`)
+      }
+      
+      const conversation = await response.json()
+      this.conversationId = conversation.id
+      return conversation
+    } catch (error) {
+      console.error('Error creating conversation:', error)
+      throw error
+    }
   }
 
   async addToConversation(conversationId: string, items: any[]): Promise<void> {
-      // Implementation for addToConversation
-       await fetch(`${this.baseURL}/conversations/${conversationId}/items`, {
-           method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-           body: JSON.stringify({ items })
-       });
+    try {
+      const response = await fetch(`${this.baseURL}/conversations/${conversationId}/items`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ items })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Failed to add to conversation: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`)
+      }
+    } catch (error) {
+      console.error('Error adding to conversation:', error)
+      throw error
+    }
   }
   
   connectWebSocket(clientId: string, onMessage: (event: any) => void) {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'
-    this.ws = new WebSocket(`${wsUrl}/ws/${clientId}`)
-    
-    this.ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      onMessage(data)
-    }
-    
-    this.ws.onopen = () => {
-      console.log('WebSocket connected')
-    }
-    
-    this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error)
+    try {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'
+      this.ws = new WebSocket(`${wsUrl}/ws/${clientId}`)
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          onMessage(data)
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error)
+        }
+      }
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected')
+      }
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+      
+      this.ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason)
+      }
+    } catch (error) {
+      console.error('Error connecting WebSocket:', error)
+      throw error
     }
   }
   
   sendMessage(type: string, data: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type,
-        ...data,
-        previous_response_id: this.lastResponseId
-      }))
+    try {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type,
+          ...data,
+          previous_response_id: this.lastResponseId
+        }))
+      } else {
+        console.warn('WebSocket is not open. Current state:', this.ws?.readyState)
+      }
+    } catch (error) {
+      console.error('Error sending WebSocket message:', error)
+      throw error
     }
   }
 }

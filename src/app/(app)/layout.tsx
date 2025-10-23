@@ -223,7 +223,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
   
   const deleteRevenueRecord = useCallback(async (id: string) => {
-    await deleteDoc(doc(db, 'revenue', id));
+    try {
+      await deleteDoc(doc(db, 'revenue', id));
+    } catch (error) {
+      console.error('Error deleting revenue record:', error);
+      throw error;
+    }
   }, []);
   
   const addExpense = useCallback(async (expense: Omit<Expense, 'id'>) => {
@@ -231,7 +236,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteExpense = useCallback(async (id: string) => {
-    await deleteDoc(doc(db, 'expenses', id));
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      throw error;
+    }
   }, []);
 
   const addRequest = useCallback(async (request: Omit<EmployeeRequest, 'id'>) => {
@@ -239,8 +249,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateRequestStatus = useCallback(async (id: string, status: EmployeeRequest['status'], notes?: string) => {
+    try {
       const requestDocRef = doc(db, 'requests', id);
       await updateDoc(requestDocRef, { status, notes });
+    } catch (error) {
+      console.error('Error updating request status:', error);
+      throw error;
+    }
   }, []);
 
 

@@ -27,8 +27,14 @@ class PDFService {
   }
 
   async loadCompanyLogo() {
+    try {
       // In a real app, load from a secure source or config
-    this.logo = 'https://picsum.photos/seed/branchflow/120/40';
+      this.logo = 'https://picsum.photos/seed/branchflow/120/40';
+    } catch (error) {
+      console.error('Error loading company logo:', error);
+      // Logo is optional, so we can continue without it
+      this.logo = undefined;
+    }
   }
 
   public async generatePDF(config: {
@@ -38,19 +44,24 @@ class PDFService {
     userData: any;
     branchData: any;
   }) {
-    this.doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true
-    });
+    try {
+      this.doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
 
-    this.addHeader(config.title, config.branchData.name);
-    this.addContent(config.type, config.content);
-    this.addFooter(config.userData, config.branchData);
-    this.addPageNumbers();
+      this.addHeader(config.title, config.branchData.name);
+      this.addContent(config.type, config.content);
+      this.addFooter(config.userData, config.branchData);
+      this.addPageNumbers();
 
-    return this.doc;
+      return this.doc;
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private addHeader(title: string, branchName: string) {
